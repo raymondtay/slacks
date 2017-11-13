@@ -32,6 +32,16 @@ object ConfigData {
     }""" ,
     """
     slacks.oauth.auth {
+      url = "http://finance.yahoo.com/q/h?s=^IXIC"
+      params = ["", ""]
+    }""" ,
+    """
+    slacks.oauth.auth {
+      url = "https://slack.com/oauth/authorize"
+      params = ["", ""]
+    }""" ,
+    """
+    slacks.oauth.auth {
       url = "https://slack.com/oauth/authorize"
     }""" ,
     """
@@ -39,10 +49,25 @@ object ConfigData {
     }
     """).map(cfg ⇒ ConfigFactory.parseString(cfg))
 
+  val missingData1 = List("""
+    slacks.oauth.auth {
+      params = []
+    }
+    """,
+    """
+     slacks.oauth.auth {
+      url = ""
+    }
+    """
+    ).map(cfg ⇒ ConfigFactory.parseString(cfg))
+
   val genGoodConfig = for { cfg <- oneOf(goodCfgs) } yield cfg
   val genBadConfig = for { cfg <- oneOf(badCfgs) } yield cfg
+  val genMissingData1Config = for { cfg <- oneOf(missingData1) } yield cfg
   implicit val arbGoodConfig = Arbitrary(genGoodConfig)
   implicit val arbBadConfig = Arbitrary(genBadConfig)
+  implicit val arbMissingData1Config = Arbitrary(genMissingData1Config)
+
 }
 
 class ConfigSpec extends mutable.Specification with ScalaCheck {
@@ -61,7 +86,17 @@ class ConfigSpec extends mutable.Specification with ScalaCheck {
 
   {
     import ConfigData.arbBadConfig
-    "Invalid/missing 'url' and/or 'params' would be caught." >> prop{ (cfg: Config) ⇒
+    "part-1 Invalid/missing 'url' and/or 'params' would be caught." >> prop{ (cfg: Config) ⇒
+      ConfigValidator.validateConfig(cfg.getConfig("slacks.oauth.auth")) match {
+        case Valid(_) ⇒ false
+        case Invalid(_) ⇒ true
+      }
+    }.set(minTestsOk = minimumNumberOfTests, workers = 1)
+  }
+
+  {
+    import ConfigData.arbMissingData1Config
+    "part-2 Invalid/missing 'url' and/or 'params' would be caught." >> prop{ (cfg: Config) ⇒
       ConfigValidator.validateConfig(cfg.getConfig("slacks.oauth.auth")) match {
         case Valid(_) ⇒ false
         case Invalid(_) ⇒ true

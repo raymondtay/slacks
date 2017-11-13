@@ -43,7 +43,7 @@ sealed trait ConfigValidator {
     import slacks.core.parser._
 
     Try{c.getStringList("params").asScala.toList}.toOption match {
-      case Some(params) => 
+      case Some(params) ⇒ 
         val paramParser = Parameter.apply[String, ParamType[String]]
         val xs = params.map(param ⇒ paramParser.parse(param)).sequence
         if(xs != None) xs.get.validNel
@@ -55,10 +55,10 @@ sealed trait ConfigValidator {
   def validateAuthUrlConfig(c: Config) : ValidationResult[String] = {
     Try{c.getString("url")}.toOption match {
       case Some(url) ⇒
-        if (!url.isEmpty && new java.net.URI(url).equals(new java.net.URI(url)))
-          url.validNel
-        else
-          InvalidUri.invalidNel
+        Try{new java.net.URI(url)}.toOption match {
+          case Some(uri) ⇒ url.validNel
+          case None      ⇒ InvalidUri.invalidNel
+        }
       case None ⇒ MissingUrlKey.invalidNel
     }
   }
