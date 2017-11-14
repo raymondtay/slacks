@@ -9,7 +9,7 @@ import Prop.{forAll, throws, AnyOperators}
 
 object ConfigData {
 
-  val goodCfgs = List("""
+  val goodCfgs1 = List("""
     slacks.oauth.auth {
       url = "http://google.com"
       params = ["aaa", "bbb"]
@@ -23,6 +23,26 @@ object ConfigData {
     slacks.oauth.auth {
       url = "https://slack.com/oauth/authorize"
       params = ["client_id", "scope", "redirect_uri?", "state?", "team?"]
+    }
+    """).map(cfg ⇒ ConfigFactory.parseString(cfg))
+
+  val goodCfgs2 = List("""
+    slacks.oauth.access {
+      url = "http://google.com"
+      params = ["aaa", "bbb"]
+      timeout = 1
+    }""" ,
+    """
+    slacks.oauth.access {
+      url = "https://slack.com/oauth/authorize"
+      params = ["client_id", "redirect_uri?"]
+      timeout = 23
+    }""" ,
+    """
+    slacks.oauth.access {
+      url = "https://slack.com/oauth/authorize"
+      params = ["client_id", "scope", "redirect_uri?", "state?", "team?"]
+      timeout = 32
     }
     """).map(cfg ⇒ ConfigFactory.parseString(cfg))
 
@@ -61,12 +81,34 @@ object ConfigData {
     """
     ).map(cfg ⇒ ConfigFactory.parseString(cfg))
 
-  val genGoodConfig = for { cfg <- oneOf(goodCfgs) } yield cfg
+  val missingData2 = List("""
+    slacks.oauth.access {
+      params = []
+    }
+    """,
+    """
+    slacks.oauth.access {
+      timeout = 0 
+    }
+    """,
+ 
+    """
+     slacks.oauth.access {
+      url = ""
+    }
+    """
+    ).map(cfg ⇒ ConfigFactory.parseString(cfg))
+
+  val genGoodConfig1 = for { cfg <- oneOf(goodCfgs1) } yield cfg
+  val genGoodConfig2 = for { cfg <- oneOf(goodCfgs2) } yield cfg
   val genBadConfig = for { cfg <- oneOf(badCfgs) } yield cfg
   val genMissingData1Config = for { cfg <- oneOf(missingData1) } yield cfg
-  implicit val arbGoodConfig = Arbitrary(genGoodConfig)
+  val genMissingData2Config = for { cfg <- oneOf(missingData2) } yield cfg
+  implicit val arbGoodConfig1 = Arbitrary(genGoodConfig1)
+  implicit val arbGoodConfig2 = Arbitrary(genGoodConfig2)
   implicit val arbBadConfig = Arbitrary(genBadConfig)
   implicit val arbMissingData1Config = Arbitrary(genMissingData1Config)
+  implicit val arbMissingData2Config = Arbitrary(genMissingData2Config)
 
 }
 
@@ -75,9 +117,19 @@ class ConfigSpec extends mutable.Specification with ScalaCheck {
   import cats._, data._, implicits._, Validated._
 
   {
-    import ConfigData.arbGoodConfig
+    import ConfigData.arbGoodConfig1
     "Valid 'url' and 'params' will be registered and caught." >> prop{ (cfg: Config) ⇒
-      ConfigValidator.validateConfig(cfg.getConfig("slacks.oauth.auth")) match {
+      ConfigValidator.validateAuthConfig(cfg.getConfig("slacks.oauth.auth")) match {
+        case Valid(slackConfig) ⇒ true
+        case Invalid(_) ⇒ false
+      }
+    }.set(minTestsOk = minimumNumberOfTests, workers = 1)
+  }
+
+  {
+    import ConfigData.arbGoodConfig2
+    "Valid 'url' and 'params' and 'timeout' will be registered and caught." >> prop{ (cfg: Config) ⇒
+      ConfigValidator.validateAccessConfig(cfg.getConfig("slacks.oauth.access")) match {
         case Valid(slackConfig) ⇒ true
         case Invalid(_) ⇒ false
       }
@@ -87,7 +139,7 @@ class ConfigSpec extends mutable.Specification with ScalaCheck {
   {
     import ConfigData.arbBadConfig
     "part-1 Invalid/missing 'url' and/or 'params' would be caught." >> prop{ (cfg: Config) ⇒
-      ConfigValidator.validateConfig(cfg.getConfig("slacks.oauth.auth")) match {
+      ConfigValidator.validateAuthConfig(cfg.getConfig("slacks.oauth.auth")) match {
         case Valid(_) ⇒ false
         case Invalid(_) ⇒ true
       }
@@ -97,7 +149,17 @@ class ConfigSpec extends mutable.Specification with ScalaCheck {
   {
     import ConfigData.arbMissingData1Config
     "part-2 Invalid/missing 'url' and/or 'params' would be caught." >> prop{ (cfg: Config) ⇒
-      ConfigValidator.validateConfig(cfg.getConfig("slacks.oauth.auth")) match {
+      ConfigValidator.validateAuthConfig(cfg.getConfig("slacks.oauth.auth")) match {
+        case Valid(_) ⇒ false
+        case Invalid(_) ⇒ true
+      }
+    }.set(minTestsOk = minimumNumberOfTests, workers = 1)
+  }
+
+  {
+    import ConfigData.arbMissingData2Config
+    "part-3 Invalid/missing 'url' and/or 'params' and/or 'timeout' would be caught." >> prop{ (cfg: Config) ⇒
+      ConfigValidator.validateAccessConfig(cfg.getConfig("slacks.oauth.access")) match {
         case Valid(_) ⇒ false
         case Invalid(_) ⇒ true
       }

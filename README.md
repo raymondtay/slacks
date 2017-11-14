@@ -7,7 +7,8 @@ At the moment, `slacks` uses `cats`, `eff`, `fastparse`, `scalacheck` and
 `specs2` and the author is grateful the contributors of those libraries.
 
 *Note* : Not using the recent version `4.5.0` of `Eff` as its not fully
-compatible with version `1.0.0-RC1` of `Cats`. Stay tuned for updates.
+compatible with version `1.0.0-RC1` of `Cats`; hence we're sticking to `0.9.0`
+for `Cats`. Stay tuned for updates.
 
 # How to use 
 

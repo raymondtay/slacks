@@ -1,25 +1,84 @@
 package slacks.core.program
 
-import org.specs2._
+import org.specs2.ScalaCheck
+import org.specs2.mutable._
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.testkit.Specs2RouteTest
+import akka.http.scaladsl.server._
+import Directives._
+import org.specs2.concurrent.ExecutionEnv
 import org.scalacheck._
 import com.typesafe.config._
 import Arbitrary._
 import Gen.{containerOfN, choose, pick, mapOf, listOf, oneOf}
 import Prop.{forAll, throws, AnyOperators}
 import org.atnos.eff._
+import org.atnos.eff.future._
 import org.atnos.eff.all._
 import org.atnos.eff.syntax.all._
+import org.atnos.eff.syntax.future._
 import cats._, implicits._
+import akka.actor._
+import akka.stream._
 
-class OAuthSpec extends Specification with ScalaCheck { def is = s2"""
+class OAuthSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck with Specs2RouteTest { override def is = s2"""
 
   The oauth stack can be used to
     return the client secret key    $getSecretKey
+    return slack's access token     $getAccessToken
   """
 
   def getSecretKey = {
     import OAuthInterpreter._
-    val result = program.runReader(("raymondtay", "1122ccc".some)).runEval.runWriter.run
+    val result = getClientCredentials.runReader(("raymondtay", "1122ccc".some)).runEval.runWriter.run
     result._1 === "1122ccc".some
+  }
+
+  // Considering that we cannot and quite possibly a terrible idea to connect
+  // to Slack everytime we needed something, we have to simulate the comings
+  // and goings.
+  //
+  
+  val simulatedRoute = 
+    Directives.get {
+      path("fake.slack.com/api/oauth.access") { // this must match application.conf
+        parameters('client_id, 'client_secret, 'code) {
+          (cId, cS, code) ⇒
+            println("SAW ME ????")
+            val json = """
+            {
+              "access_token": "xoxp-23984754863-2348975623103",
+              "scope": "read"
+            }
+            """
+            complete(json)
+        }
+      } ~ 
+      path("fake.slack.com") {
+        complete("fake-code-from-slack-1337") // simulates the return code from Slack
+      }
+    }
+
+  def getAccessToken = {
+    Get("/fake.slack.com") ~> simulatedRoute ~> check {
+      import OAuthInterpreter._
+      import scala.concurrent._, duration._
+      import scala.concurrent.ExecutionContext.Implicits.global
+  
+      val code = responseAs[String]
+
+      implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
+      import slacks.core.config.Config
+      Config.accessConfig match { // this tests the configuration loaded in application.conf
+        case Right(cfg) ⇒ 
+          val result =
+            Await.result(
+              getSlackAccessToken(cfg, code, new FakeHttpService).
+                runReader(("raymond", "raymond-secret-key".some)).
+                runWriter.runSequential, 2 second)
+          result._1 === Option("test-token")
+        case Left(_)  ⇒ false
+      }
+    }
   }
 }

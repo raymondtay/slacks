@@ -13,7 +13,7 @@ object Dependencies {
   val logbackClassic     = "1.2.3"
   val fastparseVersion   = "1.0.0"
   val typesafecfgVersion = "1.3.1"
-  val effVersion         = "3.0.2"
+  val effVersion         = "4.5.0"
 
   // Libraries
   val cats           = "org.typelevel" %% "cats-core" % catsVersion

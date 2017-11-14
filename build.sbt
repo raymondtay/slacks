@@ -15,7 +15,7 @@ val codeCoverageSettings = Seq(
  coverageFailOnMinimum := true
 )
 
-lazy val tube = (project in file("."))
+lazy val slacks = (project in file("."))
   .settings(
     commonSettings ++ codeCoverageSettings,
     libraryDependencies ++= (generalLibs ++ testLibs)

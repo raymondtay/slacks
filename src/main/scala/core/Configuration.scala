@@ -13,13 +13,16 @@ import slacks.provider.slack.config._
 object Config {
   lazy val config = ConfigFactory.load()
 
-  val authConfig = config.getConfig("slacks.oauth.auth")
+  val authConfig : NonEmptyList[ConfigValidation] Either SlackAuthConfig[String] = ConfigValidator.validateAuthConfig(config.getConfig("slacks.oauth.auth")).toEither
 
-  val accessConfig = config.getConfig("slacks.oauth.access")
+  val accessConfig : NonEmptyList[ConfigValidation] Either SlackAccessConfig[String] = ConfigValidator.validateAccessConfig(config.getConfig("slacks.oauth.access")).toEither
 }
 
 sealed trait ConfigValidation {
   def errorMessage : String
+}
+case object MissingTimeoutKey extends ConfigValidation {
+  def errorMessage = "key: 'timeout' is missing."
 }
 case object MissingUrlKey extends ConfigValidation {
   def errorMessage = "key: 'url' is missing."
@@ -38,7 +41,7 @@ case object ParametersMustConformToConvention extends ConfigValidation {
 sealed trait ConfigValidator {
   type ValidationResult[A] = ValidatedNel[ConfigValidation, A]
 
-  def validateAuthParamsConfig(c: Config) : ValidationResult[List[ParamType[String]]] = {
+  def validateParams(c: Config) : ValidationResult[List[ParamType[String]]] = {
     import scala.collection.JavaConverters._
     import slacks.core.parser._
 
@@ -52,7 +55,7 @@ sealed trait ConfigValidator {
     }
   }
 
-  def validateAuthUrlConfig(c: Config) : ValidationResult[String] = {
+  def validateUrl(c: Config) : ValidationResult[String] = {
     Try{c.getString("url")}.toOption match {
       case Some(url) ⇒
         Try{new java.net.URI(url)}.toOption match {
@@ -63,14 +66,25 @@ sealed trait ConfigValidator {
     }
   }
 
+  def validateTimeout(c: Config) : ValidationResult[Long] = {
+    Try{c.getLong("timeout")}.toOption match {
+      case Some(timeout) ⇒ timeout.validNel
+      case None ⇒ MissingTimeoutKey.invalidNel
+    }
+  }
 }
 
-case class SlackConfig[A](url : String, params : List[ParamType[A]])
+case class SlackAuthConfig[A](url : String, params : List[ParamType[A]])
+case class SlackAccessConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 
 object ConfigValidator extends ConfigValidator {
 
-  def validateConfig(config : Config) =
-    (validateAuthUrlConfig(config), 
-    validateAuthParamsConfig(config)).map2((url, params) ⇒ SlackConfig(url,params))
+  def validateAuthConfig(config : Config) =
+    (validateUrl(config), 
+    validateParams(config)).map2((url, params) ⇒ SlackAuthConfig(url,params))
 
+  def validateAccessConfig(config : Config) =
+    (validateUrl(config), 
+    validateParams(config),
+    validateTimeout(config)).map3((url, params, timeout) ⇒ SlackAccessConfig(url,params,timeout))
 }

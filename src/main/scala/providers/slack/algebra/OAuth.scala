@@ -21,17 +21,9 @@ case class GetState[T]() extends OAuth[Option[String]]
 object OAuth {
   import cats._, data._
   import org.atnos.eff._
+  import org.atnos.eff.future._
 
-  type ClientId = String
-  type ClientSecretKey = String
+  type Stack = Fx.fx3[TimedFuture, WriterString, ReaderCredentials]
 
-  /* Asking the context for the 2-tuple of client-id and some secret key if
-   * present */
-  type ReaderCredentials[A] = Reader[(ClientId, Option[ClientSecretKey]), A]
-
-  /* Produce a side-effect of logging events. */
-  type WriterString[A] = Writer[String, A]
-
-  type Stack = Fx.fx3[WriterString, ReaderCredentials, Eval]
-
+  type CredentialsStack = Fx.fx3[WriterString, ReaderCredentials, Eval]
 }
