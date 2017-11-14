@@ -71,6 +71,6 @@ object ConfigValidator extends ConfigValidator {
 
   def validateConfig(config : Config) =
     (validateAuthUrlConfig(config), 
-    validateAuthParamsConfig(config)).mapN((url, params) ⇒ SlackConfig(url,params))
+    validateAuthParamsConfig(config)).map2((url, params) ⇒ SlackConfig(url,params))
 
 }

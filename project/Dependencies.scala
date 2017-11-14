@@ -3,7 +3,7 @@ import sbt._
 object Dependencies {
 
   // Versions
-  val catsVersion       = "1.0.0-RC1"
+  val catsVersion       = "0.9.0"
   val akkaHttpVersion   = "10.0.10"
   val akkaVersion       = "2.5.6"
   val scalaCheckVersion = "1.13.4"
@@ -13,7 +13,7 @@ object Dependencies {
   val logbackClassic     = "1.2.3"
   val fastparseVersion   = "1.0.0"
   val typesafecfgVersion = "1.3.1"
-  val iotaVersion        = "0.3.2"
+  val effVersion         = "3.0.2"
 
   // Libraries
   val cats           = "org.typelevel" %% "cats-core" % catsVersion
@@ -35,10 +35,10 @@ object Dependencies {
     )
   val fastparse = "com.lihaoyi" %% "fastparse" % fastparseVersion
   val typesafecfg =  "com.typesafe" % "config" % typesafecfgVersion
-  val iota = "io.frees" %% "iota-core"  % iotaVersion
-
+  val eff = "org.atnos" %% "eff" % effVersion
+  
   // Grouping the libraries to logical units
-  val generalLibs = Seq(cats, akkaHttp, akkaStream, akkaActors, fastparse, iota) ++ logger ++ circeJson
+  val generalLibs = Seq(cats, akkaHttp, akkaStream, akkaActors, fastparse, eff) ++ logger ++ circeJson
 
   val testLibs = Seq(akkaHttpTest, specs2ScalaCheckTest, specs2Test).map( _ % Test )
 

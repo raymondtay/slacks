@@ -1,6 +1,14 @@
 # slacks
 A mini library for Slack
 
+# dependencies
+
+At the moment, `slacks` uses `cats`, `eff`, `fastparse`, `scalacheck` and
+`specs2` and the author is grateful the contributors of those libraries.
+
+*Note* : Not using the recent version `4.5.0` of `Eff` as its not fully
+compatible with version `1.0.0-RC1` of `Cats`. Stay tuned for updates.
+
 # How to use 
 
 You would normally leverage slacks right after you have authorized via Slack's
