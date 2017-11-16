@@ -1,6 +1,7 @@
 package slacks.core.program
 
 import providers.slack.algebra._
+import providers.slack.models.SlackAccessToken
 import slacks.core.config.SlackAccessConfig
 
 import akka.actor._
@@ -27,14 +28,11 @@ class FakeHttpService extends HttpService {
   import scala.concurrent.Future
   override def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) = Kleisli{ 
     (_uri: String) ⇒ 
-      println(s"FAKE SERVICE STARTED")
+      val token = SlackAccessToken("test-token", "read" :: Nil)
+      import io.circe._, io.circe.syntax._, io.circe.generic.auto._
       Future.successful(
-        HttpResponse(entity = HttpEntity(`text/plain(UTF-8)`, "test-token"))
-        )
-      /*
-      Future.successful(
-        HttpResponse(entity = HttpEntity(`application/json`, """{ "access_token": "test-token", "scope" : "read" }"""))
-      )*/
+        HttpResponse(entity = HttpEntity(`application/json`, token.asJson.noSpaces.toString))
+      )
   }
 }
 
@@ -57,7 +55,7 @@ class SlackActor(cfg : SlackAccessConfig[String],
   import context.dispatcher
 
   implicit val http = Http(context.system)
-  private var token : Option[String] = None
+  private var token : Option[SlackAccessToken[String]] = None
 
   override def preStart() = {
     val _uri = s"${cfg.url}?client_id=${credentials._1}&client_secret=${credentials._2.get}&code=${code}"
@@ -66,9 +64,15 @@ class SlackActor(cfg : SlackAccessConfig[String],
 
   def receive = {
     case HttpResponse(StatusCodes.OK, headers, entity, _) ⇒
+      import io.circe._, io.circe.parser.decode, io.circe.generic.auto._
       entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body ⇒
         log.info("Got response, body: " + body.utf8String)
-        token = Some(body.utf8String)
+        decode[SlackAccessToken[String]](body.utf8String) match {
+          case Left(error) ⇒ log.error(s"[OAuth] Json is not in the expected format.")
+          case Right(parsedToken) ⇒ 
+            log.debug(s"[OAuth] Json parsed OK.")
+            token = Some(parsedToken)
+        }
       }
 
     case resp @ HttpResponse(code, _, _, _) ⇒

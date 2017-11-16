@@ -14,6 +14,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.stream.{ ActorMaterializer, ActorMaterializerSettings }
 import akka.util.{ByteString, Timeout}
+import providers.slack.models._
 
 object OAuthInterpreter {
   import cats._, data._, implicits._
@@ -45,7 +46,7 @@ object OAuthInterpreter {
     // Rationale for allowing the sleep to occur is because the ask i.e. ? will
     // occur before the http-request which would return a None.
     Thread.sleep(2000)
-    futureDelay[Stack, Option[SlackToken]](Await.result((actor ? GetToken).mapTo[Option[SlackToken]], timeout.duration))
+    futureDelay[Stack, Option[SlackAccessToken[String]]](Await.result((actor ? GetToken).mapTo[Option[SlackAccessToken[String]]], timeout.duration))
   }
                        
   def getClientCredentials : Eff[CredentialsStack, Option[ClientSecretKey]] = for {
@@ -55,10 +56,11 @@ object OAuthInterpreter {
 
   def getSlackAccessToken(cfg: SlackAccessConfig[String], 
                           code : SlackCode,
-                          httpService : HttpService)(implicit actorSystem: ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, Option[SlackToken]] = for {
+                          httpService : HttpService)(implicit actorSystem: ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, Option[SlackAccessToken[String]]] = for {
     credentials  <- ask[Stack, (ClientId,Option[ClientSecretKey])]
-    _            <- tell[Stack,String](s"Credentials is retrieved.")
+    _            <- tell[Stack,String](s"Credentials is retrieved, locally.")
     tokenF       <- askFromSlack(cfg, code, credentials, httpService)
+    _            <- tell[Stack,String](s"Slack access token is retrieved.")
   } yield tokenF
 
 }

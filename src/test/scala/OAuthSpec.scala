@@ -71,12 +71,13 @@ class OAuthSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck
       import slacks.core.config.Config
       Config.accessConfig match { // this tests the configuration loaded in application.conf
         case Right(cfg) ⇒ 
-          val result =
+          val token =
             Await.result(
               getSlackAccessToken(cfg, code, new FakeHttpService).
                 runReader(("raymond", "raymond-secret-key".some)).
                 runWriter.runSequential, 2 second)
-          result._1 === Option("test-token")
+          token._1.get.access_token === "test-token"
+          token._1.get.scope === List("read")
         case Left(_)  ⇒ false
       }
     }
