@@ -15,6 +15,10 @@ for `Cats`. Stay tuned for updates.
 You would normally leverage slacks right after you have authorized via Slack's
 OAuth model.
 
+(1) Export the environment variables `SLACK_CLIENT_ID` and `SLACK_SECRET_KEY`
+if you feel uncomfortable about exposing these credentials in the configuration
+file `application.conf`
+
 # License
 
 The MIT License (MIT)

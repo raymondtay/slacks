@@ -99,11 +99,37 @@ object ConfigData {
     """
     ).map(cfg ⇒ ConfigFactory.parseString(cfg))
 
+  val goodCredCfg1 = List(
+    """
+    slacks.oauth.credential {
+      clientid = "aaa"
+      clientsecretkey = "bbb"
+    }
+    """).map(s ⇒ ConfigFactory.parseString(s))
+
+  val badCredCfg1 = List(
+    """
+    slacks.oauth.credential {
+      clientsecretkey = "bbb"
+    }
+    """
+    ,
+    """
+    slacks.oauth.credential {
+      clientid = "aaa"
+    }
+    """).map(s ⇒ ConfigFactory.parseString(s))
+
   val genGoodConfig1 = for { cfg <- oneOf(goodCfgs1) } yield cfg
   val genGoodConfig2 = for { cfg <- oneOf(goodCfgs2) } yield cfg
+  val genGoodCredConfig1 = for { cfg <- oneOf(goodCredCfg1) } yield cfg
+  val genBadCredConfig1 = for { cfg <- oneOf(badCredCfg1) } yield cfg
   val genBadConfig = for { cfg <- oneOf(badCfgs) } yield cfg
   val genMissingData1Config = for { cfg <- oneOf(missingData1) } yield cfg
   val genMissingData2Config = for { cfg <- oneOf(missingData2) } yield cfg
+
+  implicit val arbGoodCredConfig1 = Arbitrary(genGoodCredConfig1)
+  implicit val arbBadCredConfig1 = Arbitrary(genBadCredConfig1)
   implicit val arbGoodConfig1 = Arbitrary(genGoodConfig1)
   implicit val arbGoodConfig2 = Arbitrary(genGoodConfig2)
   implicit val arbBadConfig = Arbitrary(genBadConfig)
@@ -115,6 +141,26 @@ object ConfigData {
 class ConfigSpec extends mutable.Specification with ScalaCheck {
   val  minimumNumberOfTests = 200
   import cats._, data._, implicits._, Validated._
+
+  {
+    import ConfigData.arbGoodCredConfig1
+    "Valid 'clientid' and 'clientsecretkey' will be registered and caught." >> prop { (cfg: Config) ⇒
+      ConfigValidator.validateCredentialsConfig(cfg.getConfig("slacks.oauth.credential")) match {
+        case Valid(credential) ⇒ true
+        case Invalid(_) ⇒ false
+      }
+    }.set(minTestsOk = minimumNumberOfTests, workers = 1)
+  }
+
+  {
+    import ConfigData.arbBadCredConfig1
+    "Missing 'clientid' and/or 'clientsecretkey' will be registered and caught." >> prop { (cfg: Config) ⇒
+      ConfigValidator.validateCredentialsConfig(cfg.getConfig("slacks.oauth.credential")) match {
+        case Valid(credential) ⇒ false
+        case Invalid(_) ⇒ true
+      }
+    }.set(minTestsOk = minimumNumberOfTests, workers = 1)
+  }
 
   {
     import ConfigData.arbGoodConfig1

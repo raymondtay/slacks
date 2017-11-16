@@ -21,6 +21,12 @@ object Config {
 sealed trait ConfigValidation {
   def errorMessage : String
 }
+case object MissingSlackClientIdKey extends ConfigValidation {
+  def errorMessage = "key: 'clientid' or environment key: 'SLACK_CLIENT_ID' is missing."
+}
+case object MissingSlackClientSKKey extends ConfigValidation {
+  def errorMessage = "key: 'clientSecretKey' or environment key: 'SLACK_SECRET_KEY' is missing."
+}
 case object MissingTimeoutKey extends ConfigValidation {
   def errorMessage = "key: 'timeout' is missing."
 }
@@ -72,12 +78,33 @@ sealed trait ConfigValidator {
       case None ⇒ MissingTimeoutKey.invalidNel
     }
   }
+
+  def validateClientId(c: Config) : ValidationResult[String] = {
+    Try{c.getString("clientid")}.toOption match {
+      case Some(cId) ⇒ cId.validNel
+      case None ⇒ MissingSlackClientIdKey.invalidNel
+    }
+  }
+
+  def validateClientSK(c: Config) : ValidationResult[String] = {
+    Try{c.getString("clientsecretkey")}.toOption match {
+      case Some(cSK) ⇒ cSK.validNel
+      case None ⇒ MissingSlackClientSKKey.invalidNel
+    }
+  }
+
 }
 
+// note: the client_id and client_secret_key should be 
+case class SlackCredentials(clientId: String, clientSecretKey: String)
 case class SlackAuthConfig[A](url : String, params : List[ParamType[A]])
 case class SlackAccessConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 
 object ConfigValidator extends ConfigValidator {
+
+  def validateCredentialsConfig(config: Config) = 
+    (validateClientId(config),
+     validateClientSK(config)).map2((clientId, clientSecretKey) ⇒ SlackCredentials(clientId,clientSecretKey))
 
   def validateAuthConfig(config : Config) =
     (validateUrl(config), 
