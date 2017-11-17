@@ -4,6 +4,7 @@ package providers.slack
 //
 package object algebra {
   import slacks.core.config.SlackAccessConfig
+  import providers.slack.models.SlackAccessToken
   import com.typesafe.config._
   import cats._, data._
   import org.atnos.eff._
@@ -30,5 +31,7 @@ package object algebra {
   /* Produce a side-effect of logging events. */
   type WriterString[A] = Writer[String, A]
 
+  /* Get the slack access token */
+  type ReaderSlackAccessToken[A] = Reader[SlackAccessToken[String], A]
 
 }

@@ -16,6 +16,8 @@ object Config {
   val authConfig : NonEmptyList[ConfigValidation] Either SlackAuthConfig[String] = ConfigValidator.validateAuthConfig(config.getConfig("slacks.oauth.auth")).toEither
 
   val accessConfig : NonEmptyList[ConfigValidation] Either SlackAccessConfig[String] = ConfigValidator.validateAccessConfig(config.getConfig("slacks.oauth.access")).toEither
+
+  val channelConfig : NonEmptyList[ConfigValidation] Either SlackChannelConfig[String] = ConfigValidator.validateChannelConfig(config.getConfig("slacks.api.channel.read")).toEither
 }
 
 sealed trait ConfigValidation {
@@ -97,10 +99,16 @@ sealed trait ConfigValidator {
 
 // note: the client_id and client_secret_key should be 
 case class SlackCredentials(clientId: String, clientSecretKey: String)
+case class SlackChannelConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackAuthConfig[A](url : String, params : List[ParamType[A]])
 case class SlackAccessConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 
 object ConfigValidator extends ConfigValidator {
+
+  def validateChannelConfig(config : Config) = 
+    (validateUrl(config),
+     validateParams(config),
+     validateTimeout(config)).map3((url, params, timeout) ⇒ SlackChannelConfig(url, params, timeout))
 
   def validateCredentialsConfig(config: Config) = 
     (validateClientId(config),

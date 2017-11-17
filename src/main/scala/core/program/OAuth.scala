@@ -26,9 +26,6 @@ object OAuthInterpreter {
 
   import OAuth._
 
-  type _readerCredentials[R] = ReaderCredentials |= R
-  type _writerString[R] = WriterString |= R
-
   private def askFromSlack(cfg : SlackAccessConfig[String],
                            code : SlackCode,
                            credential : SlackCredentials,
@@ -54,6 +51,13 @@ object OAuthInterpreter {
     _      <- tell[CredentialsStack,String](s"Credentials is retrieved.")
   } yield datum._2
 
+  /** 
+    * Attempts to get the access token from Slack via a RESTful call.
+    * @param cfg the configuration object
+    * @param code the slack code (10-min expiration lease)
+    * @param httpService the http service
+    * @return either `None` or `Some[SlackAccessToken]`
+    */
   def getSlackAccessToken(cfg: SlackAccessConfig[String], 
                           code : SlackCode,
                           httpService : HttpService)(implicit actorSystem: ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, Option[SlackAccessToken[String]]] = for {
