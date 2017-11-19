@@ -53,13 +53,13 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
       import slacks.core.config.Config
       Config.channelConfig match { // this tests the configuration loaded in application.conf
         case Right(cfg) ⇒ 
-          val result =
+          val (channels, logInfo) =
             Await.result(
               getChannelList(cfg, new FakeChannelHttpService).
-                runReader(SlackAccessToken("fake-slack-access-token", Nil)).
-                runWriter.runSequential, 4 second)
-          println(s"***** $result")
-          true
+                runReader(SlackAccessToken("fake-slack-token",
+                  "channels.list" :: Nil)).
+                runWriter.runSequential, 9 second)
+          channels.xs.size != 0
         case Left(_)  ⇒ false
       }
     }

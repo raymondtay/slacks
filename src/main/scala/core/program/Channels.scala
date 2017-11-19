@@ -42,8 +42,8 @@ object ChannelsInterpreter {
     // this abomination out.
     // Rationale for allowing the sleep to occur is because the ask i.e. ? will
     // occur before the http-request which would return a None.
-    Thread.sleep(2000)
-    futureDelay[Stack, Option[SlackChannelData]](Await.result((actor ? GetData).mapTo[Option[SlackChannelData]], timeout.duration))
+    Thread.sleep(cfg.timeout * 1000)
+    futureDelay[Stack, Storage](Await.result((actor ? GetData).mapTo[Storage], timeout.duration))
   }
  
   /** 
@@ -57,7 +57,8 @@ object ChannelsInterpreter {
     * @param httpService 
     */
   def getChannelList(cfg: SlackChannelConfig[String], 
-                     httpService : HttpService)(implicit actorSystem: ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, Option[SlackChannelData]] = for {
+                     httpService : HttpService)(implicit actorSystem:
+                     ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, Storage] = for {
     token    <- ask[Stack, SlackAccessToken[String]]
     _        <- tell[Stack, String]("Slack access token retrieved.")
     channels <- getChannelsFromSlack(cfg, token, httpService)   
