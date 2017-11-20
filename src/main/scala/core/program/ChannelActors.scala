@@ -53,18 +53,17 @@ class SlackChannelActor(cfg : SlackChannelConfig[String],
     _      <- tell[S1, String]("Collected the http entity.")
   } yield entity.dataBytes.runFold(ByteString(""))(_ ++ _)
 
-  val decodeJsonNUpdateState : Eff[S2, (SlackChannelData, Storage)] = {
+  val decodeJsonNUpdateState : Eff[S2, SlackChannelData] = {
     import io.circe.parser.decode
     import JsonCodec._
     for {
-     datum <- ask[S2, ByteString]
-      _    <- tell[S2,String]("Collected the json string from ctx.")
-     json  <- fromEither[S2, io.circe.Error, SlackChannelData](decode[SlackChannelData](datum.utf8String)) 
-      _    <- tell[S2,String]("Collected the decoded json string.")
-      a    <- get[S2, Storage]
-      _    <- put[S2,Storage](a.copy(xs = a.xs ++ json.channels))
-      b    <- get[S2, Storage]
-    } yield (json, b)
+      datum <- ask[S2, ByteString]
+       _    <- tell[S2,String]("Collected the json string from ctx.")
+      json  <- fromEither[S2, io.circe.Error, SlackChannelData](decode[SlackChannelData](datum.utf8String)) 
+       _    <- tell[S2,String]("Collected the decoded json string.")
+       a    <- get[S2, Storage]
+       _    <- modify[S2,Storage]((s:Storage) => {localStorage = s.copy(xs = s.xs ++ json.channels); localStorage})
+    } yield json
 
   }
 
@@ -82,13 +81,12 @@ class SlackChannelActor(cfg : SlackChannelConfig[String],
       val possibleDatum : Throwable Either ByteString =
         Either.catchNonFatal{Await.result(extractDataFromHttpStream.runReader(entity).runWriterNoLog.run, 2 second)}
 
-      val possibleJson : Either[Throwable, io.circe.Error Either (SlackChannelData,Storage)] = 
+      val possibleJson : Either[Throwable, io.circe.Error Either SlackChannelData] = 
       possibleDatum.map(datum ⇒ decodeJsonNUpdateState.runReader(datum).runWriterNoLog.evalState(localStorage).runEither.run) 
 
       possibleJson.joinRight match {
         case Left(error) ⇒ log.error("[Slack-channel] Error detected.")
-        case Right((channelJson, storage)) ⇒ 
-          localStorage = storage
+        case Right(channelJson) ⇒ 
           log.debug(s"[local-storage] ${localStorage.xs.size}")
           if (!channelJson.response_metadata.get.next_cursor.isEmpty)
             httpService.makeSingleRequest.run(continuationUri(channelJson.response_metadata.get.next_cursor)).pipeTo(self)
