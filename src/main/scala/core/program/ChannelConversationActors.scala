@@ -2,7 +2,7 @@ package slacks.core.program
 
 import providers.slack.algebra._
 import providers.slack.models._
-import slacks.core.config.SlackChannelListConfig
+import slacks.core.config.SlackChannelReadConfig
 
 import akka.actor._
 import akka.http.scaladsl.{Http, HttpExt}
@@ -19,12 +19,13 @@ import akka.util.{ByteString, Timeout}
   * @version 1.0
   */
 import scala.concurrent.Future
-case object GetChannelListing
-case class Storage(xs: List[SlackChannel]) 
+case object GetChannelHistory
+case class Messages(xs: List[Message])
 
-class SlackChannelActor(cfg : SlackChannelListConfig[String],
-                        token : SlackAccessToken[String],
-                        httpService : HttpService)(implicit aS: ActorSystem, aM: ActorMaterializer) extends Actor with ActorLogging {
+class SlackChannelHistoryActor(channelId: ChannelId,
+                               cfg : SlackChannelReadConfig[String],
+                               token : SlackAccessToken[String],
+                               httpService : HttpService)(implicit aS: ActorSystem, aM: ActorMaterializer) extends Actor with ActorLogging {
   import cats._, data._, implicits._
   import org.atnos.eff._
   import org.atnos.eff.all._
@@ -35,34 +36,36 @@ class SlackChannelActor(cfg : SlackChannelListConfig[String],
   import akka.pattern.{pipe}
   import context.dispatcher
 
+  import Channels._
+
   implicit val http = Http(context.system)
-  private val defaultUri = s"${cfg.url}?token=${token.access_token}&limit=20"
-  private def continuationUri = (cursor:String) => defaultUri + s"&limit=20&cursor=${cursor}"
-  private var localStorage : Storage = Storage(Nil)
+  private val defaultUri = s"${cfg.url}?channel=${channelId}&token=${token.access_token}&limit=20"
+  private def continuationUri = (cursor:String) ⇒ defaultUri + s"&limit=20&cursor=${cursor}"
+  private var localStorage : Messages = Messages(Nil)
 
   type DecodeJson[A] = io.circe.Error Either A
   type ReaderResponseEntity[A] = Reader[ResponseEntity, A]
   type ReaderBytes[A] = Reader[ByteString, A]
   type WriteLog[A] = Writer[String, A]
-  type Store[A] = State[Storage,A]
+  type Store[A] = State[Messages,A]
   type S1 = Fx.fx2[WriteLog, ReaderResponseEntity]
   type S2 = Fx.fx4[Store, DecodeJson, ReaderBytes, WriteLog]
 
   val extractDataFromHttpStream : Eff[S1, Future[ByteString]] = for {
     entity <- ask[S1, ResponseEntity]
-    _      <- tell[S1, String]("[Get-Channel-Listing-Actor] Collected the http entity.")
+    _      <- tell[S1, String]("[Get-Channel-History-Actor] Collected the http entity.")
   } yield entity.dataBytes.runFold(ByteString(""))(_ ++ _)
 
-  val decodeJsonNUpdateState : Eff[S2, SlackChannelData] = {
+  val decodeJsonNUpdateState : Eff[S2, SlackMessage] = {
     import io.circe.parser.decode
     import JsonCodec._
     for {
       datum <- ask[S2, ByteString]
-       _    <- tell[S2,String]("[Get-Channel-Listing-Actor] Collected the json string from ctx.")
-      json  <- fromEither[S2, io.circe.Error, SlackChannelData](decode[SlackChannelData](datum.utf8String)) 
-       _    <- tell[S2,String]("[Get-Channel-Listing-Actor] Collected the decoded json string.")
-       a    <- get[S2, Storage]
-       _    <- modify[S2,Storage]((s:Storage) => {localStorage = s.copy(xs = s.xs ++ json.channels); localStorage})
+       _    <- tell[S2,String]("[Get-Channel-History-Actor] Collected the json string from ctx.")
+      json  <- fromEither[S2, io.circe.Error, SlackMessage](decode[SlackMessage](datum.utf8String)) 
+       _    <- tell[S2,String]("[Get-Channel-History-Actor] Collected the decoded json string.")
+       a    <- get[S2, Messages]
+       _    <- modify[S2,Messages]((m:Messages) ⇒ {localStorage = m.copy(xs = m.xs ++ json.messages); localStorage})
     } yield json
 
   }
@@ -81,22 +84,22 @@ class SlackChannelActor(cfg : SlackChannelListConfig[String],
       val possibleDatum : Throwable Either ByteString =
         Either.catchNonFatal{Await.result(extractDataFromHttpStream.runReader(entity).runWriterNoLog.run, 2 second)}
 
-      val possibleJson : Either[Throwable, io.circe.Error Either SlackChannelData] = 
+      val possibleJson : Either[Throwable, io.circe.Error Either SlackMessage] = 
       possibleDatum.map(datum ⇒ decodeJsonNUpdateState.runReader(datum).runWriterNoLog.evalState(localStorage).runEither.run) 
 
       possibleJson.joinRight match {
-        case Left(error) ⇒ log.error("[Get-Channel-Listing-Actor] Error detected.")
+        case Left(error) ⇒ log.error("[Get-Channel-History-Actor] Error detected.")
         case Right(channelJson) ⇒ 
-          log.debug(s"[Get-Channel-Listing-Actor][local-storage] ${localStorage.xs.size}")
+          log.debug(s"[Get-Channel-History-Actor][local-storage] ${localStorage.xs.size}")
           if (!channelJson.response_metadata.get.next_cursor.isEmpty)
             httpService.makeSingleRequest.run(continuationUri(channelJson.response_metadata.get.next_cursor)).pipeTo(self)
       }
 
     case resp @ HttpResponse(code, _, _, _) ⇒
-      log.info("[Get-Channel-Listing-Actor] Request failed, response code: " + code)
+      log.info("[Get-Channel-History-Actor] Request failed, response code: " + code)
       resp.discardEntityBytes()
 
-    case GetChannelListing ⇒ 
+    case GetChannelHistory ⇒ 
       sender ! localStorage
 
     case StopAction ⇒ context stop self

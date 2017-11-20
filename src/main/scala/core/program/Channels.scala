@@ -7,7 +7,7 @@ package slacks.core.program
   */
 
 import providers.slack.algebra._
-import slacks.core.config.SlackChannelConfig
+import slacks.core.config.SlackChannelListConfig
 
 import akka.actor._
 import akka.http.scaladsl.Http
@@ -28,7 +28,7 @@ object ChannelsInterpreter {
   import Channels._
 
 
-  private def getChannelsFromSlack(cfg: SlackChannelConfig[String], 
+  private def getChannelsFromSlack(cfg: SlackChannelListConfig[String], 
                                    token: SlackAccessToken[String],
                                    httpService : HttpService)(implicit actorSystem : ActorSystem, actorMat: ActorMaterializer) = {
     import akka.pattern.{ask, pipe}
@@ -43,26 +43,24 @@ object ChannelsInterpreter {
     // Rationale for allowing the sleep to occur is because the ask i.e. ? will
     // occur before the http-request which would return a None.
     Thread.sleep(cfg.timeout * 1000)
-    futureDelay[Stack, Storage](Await.result((actor ? GetData).mapTo[Storage], timeout.duration))
+    futureDelay[Stack, Storage](Await.result((actor ? GetChannelListing).mapTo[Storage], timeout.duration))
   }
  
   /** 
     * Obtain the channel listing from Slack based on the token,
     * the process will handle the pagination mechanism embedded in Slack.
     *
-    * TODO : Implement the pagination model.
-    *
     * @param cfg configuration
     * @param token slack token
     * @param httpService 
     */
-  def getChannelList(cfg: SlackChannelConfig[String], 
+  def getChannelList(cfg: SlackChannelListConfig[String], 
                      httpService : HttpService)(implicit actorSystem:
                      ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, Storage] = for {
     token    <- ask[Stack, SlackAccessToken[String]]
-    _        <- tell[Stack, String]("Slack access token retrieved.")
+    _        <- tell[Stack, String]("[Get-Channel-List] Slack access token retrieved.")
     channels <- getChannelsFromSlack(cfg, token, httpService)   
-    _        <- tell[Stack, String]("Slack channel(s) info retrieved.")
+    _        <- tell[Stack, String]("[Get-Channel-List] Slack channel(s) info retrieved.")
   } yield channels
 
 }

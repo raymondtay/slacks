@@ -25,7 +25,8 @@ import providers.slack.models._
 class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck with Specs2RouteTest { override def is = s2"""
 
   The channel stack can be used to
-    return the channels contained in the workspace     $getChannelInfo
+    return the channels contained in the workspace           $getChannelListing
+    return the detailed information on an individual channel $getChannelHistory
   """
 
   val simulatedRoute = 
@@ -41,7 +42,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
       }
     }
 
-  def getChannelInfo = {
+  def getChannelListing = {
     Get("/fake.slack.com") ~> simulatedRoute ~> check {
       import ChannelsInterpreter._
       import scala.concurrent._, duration._
@@ -51,11 +52,11 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
 
       implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
       import slacks.core.config.Config
-      Config.channelConfig match { // this tests the configuration loaded in application.conf
+      Config.channelListConfig match { // this tests the configuration loaded in application.conf
         case Right(cfg) ⇒ 
           val (channels, logInfo) =
             Await.result(
-              getChannelList(cfg, new FakeChannelHttpService).
+              getChannelList(cfg, new FakeChannelListingHttpService).
                 runReader(SlackAccessToken("fake-slack-token",
                   "channels.list" :: Nil)).
                 runWriter.runSequential, 9 second)
@@ -63,5 +64,27 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
         case Left(_)  ⇒ false
       }
     }
+  }
+
+  def getChannelHistory = {
+      import ChannelConversationInterpreter._
+      import scala.concurrent._, duration._
+      import scala.concurrent.ExecutionContext.Implicits.global
+  
+      val channelId = "C024Z5MQT"
+
+      implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
+      import slacks.core.config.Config
+      Config.channelReadConfig match { // this tests the configuration loaded in application.conf
+        case Right(cfg) ⇒ 
+          val (channels, logInfo) =
+            Await.result(
+              ChannelConversationInterpreter.getChannelHistory(channelId, cfg, new FakeChannelHistoryHttpService).
+                runReader(SlackAccessToken("fake-slack-token",
+                  "channels.list" :: Nil)).
+                runWriter.runSequential, 9 second)
+          channels.xs.size != 0
+        case Left(_)  ⇒ false
+      }
   }
 }

@@ -28,3 +28,28 @@ case class Topic(value: String, creator: String, last_set: Long)
 case class Purpose(value: String, creator: String, last_set: Long)
 case class ResponseData(next_cursor: String) // Slack's pagination is done via cursor
 
+case class SlackMessage(ok : Boolean, messages : List[Message], response_metadata: Option[ResponseData])
+case class Message(
+  tpe: String,     // type of message
+  subtpe: String,  // subtype of the message
+  ts: String,      // timestamp of the message
+  text: String,    // text found in channel
+  bot_id: String,  // the bot's id, if any
+  attachments : List[Attachment], // list of attachments
+  reactions : List[Reaction]      // list of reactions to message
+)
+
+case class Attachment(
+  fallback : String,
+  text : String,
+  pretext : String,
+  id : Long,
+  color : String,
+  mrkdwn_in : List[String]
+  )
+
+case class Reaction(
+  name : String,
+  users: List[String],
+  count : Long
+  )
