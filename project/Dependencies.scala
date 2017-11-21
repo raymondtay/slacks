@@ -5,7 +5,7 @@ object Dependencies {
   // Versions
   val catsVersion       = "0.9.0"
   val akkaHttpVersion   = "10.0.10"
-  val akkaVersion       = "2.5.6"
+  val akkaVersion       = "2.4.19"
   val scalaCheckVersion = "1.13.4"
   val specs2Version     = "4.0.1"
   val circeVersion      = "0.8.0"
