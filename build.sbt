@@ -4,7 +4,7 @@ val commonSettings = Seq(
   name := "slacks",
   description := "Simple library for Slack APIs",
   version := "0.1-SNAPSHOT",
-  scalaVersion := "2.12.4",
+  scalaVersion := "2.11.11",
   scalacOptions ++= Seq("-Yrangepos", "-Ypartial-unification")
 )
 

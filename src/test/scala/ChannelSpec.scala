@@ -46,7 +46,6 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
     Get("/fake.slack.com") ~> simulatedRoute ~> check {
       import ChannelsInterpreter._
       import scala.concurrent._, duration._
-      import scala.concurrent.ExecutionContext.Implicits.global
   
       val code = responseAs[String]
 
@@ -69,7 +68,6 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
   def getChannelHistory = {
       import ChannelConversationInterpreter._
       import scala.concurrent._, duration._
-      import scala.concurrent.ExecutionContext.Implicits.global
   
       val channelId = "C024Z5MQT"
 

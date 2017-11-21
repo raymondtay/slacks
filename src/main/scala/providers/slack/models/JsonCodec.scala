@@ -3,6 +3,7 @@ package providers.slack.models
 
 object JsonCodec {
   import io.circe._, io.circe.generic.semiauto._
+  import cats._, implicits._
 
   implicit val errorDec : Decoder[SlackError] = deriveDecoder[SlackError]
   implicit val responseDataDec: Decoder[ResponseData] = deriveDecoder[ResponseData]
@@ -15,13 +16,13 @@ object JsonCodec {
   implicit val slackMessage: Decoder[Message] = new Decoder[Message] {
     final def apply(c: HCursor): Decoder.Result[Message] =
       for {
-        tpe     <- c.downField("type").as[String]
-        subtype <- c.downField("subtype").as[String]
-        ts      <- c.downField("ts").as[String]
-        text    <- c.downField("text").as[String]
-        botId   <- c.downField("bot_id").as[String]
-        atts    <- c.getOrElse("attachments")(List.empty[Attachment])
-        reacs   <- c.getOrElse("reactions")(List.empty[Reaction])
+        tpe     <- Monad[Id].pure(c.downField("type").as[String])
+        subtype <- Monad[Id].pure(c.downField("subtype").as[String])
+        ts      <- Monad[Id].pure(c.downField("ts").as[String])
+        text    <- Monad[Id].pure(c.downField("text").as[String])
+        botId   <- Monad[Id].pure(c.downField("bot_id").as[String])
+        atts    <- Monad[Id].pure(c.getOrElse("attachments")(List.empty[Attachment]))
+        reacs   <- Monad[Id].pure(c.getOrElse("reactions")(List.empty[Reaction]))
     } yield {
       Message(tpe, subtype, ts, text, botId, atts, reacs)
     }

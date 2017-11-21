@@ -63,7 +63,6 @@ class OAuthSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck
     Get("/fake.slack.com") ~> simulatedRoute ~> check {
       import OAuthInterpreter._
       import scala.concurrent._, duration._
-      import scala.concurrent.ExecutionContext.Implicits.global
   
       val code = responseAs[String]
 
