@@ -4,6 +4,7 @@ package providers.slack.models
 object JsonCodec {
   import io.circe._, io.circe.generic.semiauto._
 
+  implicit val errorDec : Decoder[SlackError] = deriveDecoder[SlackError]
   implicit val responseDataDec: Decoder[ResponseData] = deriveDecoder[ResponseData]
   implicit val purposeDec : Decoder[Purpose] = deriveDecoder[Purpose]
   implicit val topicDec : Decoder[Topic] = deriveDecoder[Topic]

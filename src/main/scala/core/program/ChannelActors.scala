@@ -37,7 +37,7 @@ class SlackChannelActor(cfg : SlackChannelListConfig[String],
 
   implicit val http = Http(context.system)
   private val defaultUri = s"${cfg.url}?token=${token.access_token}&limit=20"
-  private def continuationUri = (cursor:String) => defaultUri + s"&limit=20&cursor=${cursor}"
+  private def continuationUri = (cursor:String) ⇒ defaultUri + s"&limit=20&cursor=${cursor}"
   private var localStorage : Storage = Storage(Nil)
 
   type DecodeJson[A] = io.circe.Error Either A
@@ -62,7 +62,7 @@ class SlackChannelActor(cfg : SlackChannelListConfig[String],
       json  <- fromEither[S2, io.circe.Error, SlackChannelData](decode[SlackChannelData](datum.utf8String)) 
        _    <- tell[S2,String]("[Get-Channel-Listing-Actor] Collected the decoded json string.")
        a    <- get[S2, Storage]
-       _    <- modify[S2,Storage]((s:Storage) => {localStorage = s.copy(xs = s.xs ++ json.channels); localStorage})
+       _    <- modify[S2,Storage]((s:Storage) ⇒ {localStorage = s.copy(xs = s.xs ++ json.channels); localStorage})
     } yield json
 
   }
