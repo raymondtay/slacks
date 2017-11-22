@@ -36,7 +36,7 @@ object ChannelsInterpreter {
     import scala.concurrent.duration._
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val actor = actorSystem.actorOf(Props(new SlackChannelActor(cfg, token, httpService)), "slack-channel-actor")
+    val actor = actorSystem.actorOf(Props(new SlackChannelActor(cfg, token, httpService)))
     implicit val timeout = Timeout(cfg.timeout seconds)
     // TODO: Once Eff-Monad upgrades to allow waitFor, retryUntil, we will take
     // this abomination out.
