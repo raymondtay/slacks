@@ -2,6 +2,7 @@ import Dependencies._
 
 val commonSettings = Seq(
   name := "slacks",
+  organization := "org.slacks",
   description := "Simple library for Slack APIs",
   version := "0.1-SNAPSHOT",
   scalaVersion := "2.11.11",
