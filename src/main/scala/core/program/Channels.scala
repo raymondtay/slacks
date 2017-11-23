@@ -27,7 +27,6 @@ object ChannelsInterpreter {
 
   import Channels._
 
-
   private def getChannelsFromSlack(cfg: SlackChannelListConfig[String], 
                                    token: SlackAccessToken[String],
                                    httpService : HttpService)(implicit actorSystem : ActorSystem, actorMat: ActorMaterializer) = {
@@ -63,4 +62,29 @@ object ChannelsInterpreter {
     _        <- tell[Stack, String]("[Get-Channel-List] Slack channel(s) info retrieved.")
   } yield channels
 
+  import slacks.core.tracer.TracerFunctions._
+  type ChannelStack = Fx.fx5[ReadTracer, LogTracer, Throwable Either ?, WriterString, Eval]
+  import scala.concurrent.ExecutionContext.Implicits.global
+  implicit val scheduler = ExecutorServices.schedulerFromGlobalExecutionContext
+
+  /** 
+    * Obtain the channel listing from Slack based on the token,
+    * the process will handle the pagination mechanism embedded in Slack.
+    * This action is traced via OpenTracing. See http://opentracing.io
+    *
+    * @param cfg configuration
+    * @param token slack token
+    * @param message a map of (k,v) pairs to be passed for tracing 
+    * @param httpService
+    */
+  def traceGetChannelList(cfg: SlackChannelListConfig[String],
+                          httpService : HttpService,
+                          message : slacks.core.tracer.Message, 
+                          token : SlackAccessToken[String])
+                         (implicit actorSystem : ActorSystem, actorMat: ActorMaterializer) : Eff[ChannelStack, scala.concurrent.Future[(Storage, List[String])]] =
+  for {
+    tracer  <- ask[ChannelStack, io.opentracing.Tracer].into[ChannelStack]
+    _       <- tell[ChannelStack,String](s"Got the tracer from the context.").into[ChannelStack]
+    result  <- traceEffect(getChannelList(cfg, httpService).runReader(token).runWriter.runSequential)(message).into[ChannelStack]
+  } yield result
 }

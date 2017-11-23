@@ -24,9 +24,17 @@ import providers.slack.models._
 
 class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck with Specs2RouteTest { override def is = s2"""
 
+  OpenTracing Disabled
+  --------------------------------------------------------------
   The channel stack can be used to
     return the channels contained in the workspace           $getChannelListing
     return the detailed information on an individual channel $getChannelHistory
+
+  OpenTracing Enabled
+  --------------------------------------------------------------
+  The channel stack can be used to
+    return the channels contained in the workspace           $getChannelListingTraced
+    return the detailed information on an individual channel $getChannelHistoryTraced
   """
 
   val simulatedRoute = 
@@ -68,7 +76,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
   def getChannelHistory = {
       import ChannelConversationInterpreter._
       import scala.concurrent._, duration._
-  
+
       val channelId = "C024Z5MQT"
 
       implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
@@ -85,4 +93,67 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
         case Left(_)  ⇒ false
       }
   }
+
+  def getChannelListingTraced = {
+      import ChannelsInterpreter._
+      import io.opentracing.util.GlobalTracer
+      import scala.concurrent._, duration._
+
+      // empty message-map for the trace
+      val message : slacks.core.tracer.Message = collection.immutable.HashMap.empty[String,String]
+      val tracer : io.opentracing.Tracer = GlobalTracer.get()
+
+      implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
+      import slacks.core.config.Config
+      Config.channelListConfig match { // this tests the configuration loaded in application.conf
+        case Right(cfg) ⇒
+          val (channelResult, logs)  =
+              traceGetChannelList(cfg,
+                                  new FakeChannelListingHttpService,
+                                  message,
+                                  SlackAccessToken("fake-slack-token", "channels.list" :: Nil)
+                                ).runReader(tracer).runWriter.runEither.runWriter.runEval.run
+          channelResult match {
+            case Left(error) ⇒ false // should not happen
+            case Right(datum) ⇒
+              val (actualChannelResultsFuture, tracerLogs) = datum
+              val (channels, channelLogs) = Await.result(actualChannelResultsFuture, 2 seconds)
+              channels.xs.size != 0
+          }
+        case Left(_)  ⇒ false
+      }
+  }
+
+  def getChannelHistoryTraced = {
+      import ChannelConversationInterpreter._
+      import io.opentracing.util.GlobalTracer
+      import scala.concurrent._, duration._
+
+      // empty message-map for the trace
+      val message : slacks.core.tracer.Message = collection.immutable.HashMap.empty[String,String]
+      val tracer : io.opentracing.Tracer = GlobalTracer.get()
+      val channelId = "fake-channel-id"
+
+      implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
+      import slacks.core.config.Config
+      Config.channelReadConfig match { // this tests the configuration loaded in application.conf
+        case Right(cfg) ⇒
+          val (channelResult, logs)  =
+              traceGetChannelHistories(cfg,
+                                       channelId,
+                                       new FakeChannelHistoryHttpService,
+                                       message,
+                                       SlackAccessToken("fake-slack-token", "channels.list" :: Nil)
+                                     ).runReader(tracer).runWriter.runEither.runWriter.runEval.run
+          channelResult match {
+            case Left(error) ⇒ false // should not happen
+            case Right(datum) ⇒
+              val (actualChannelResultsFuture, tracerLogs) = datum
+              val (channels, channelLogs) = Await.result(actualChannelResultsFuture, 2 seconds)
+              channels.xs.size != 0
+          }
+        case Left(_)  ⇒ false
+      }
+  }
+
 }
