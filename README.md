@@ -1,4 +1,7 @@
 # slacks
+
+[![CircleCI](https://circleci.com/gh/raymondtay/slacks/tree/master.svg?style=svg)](https://circleci.com/gh/raymondtay/slacks/tree/master)
+
 A mini library for Slack
 
 # dependencies
