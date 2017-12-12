@@ -53,3 +53,16 @@ case class Reaction(
   users: List[String],
   count : Long
   )
+
+case class Reply(ts: String, user: String) // "ts" - the timestamp in string format, "user" - the slack user id
+
+case class BotAttachmentMessage(
+  `type`: String,
+  user: String = "",
+  bot_id: String,
+  text: String,
+  attachments: List[Attachment],
+  ts: String,
+  reactions: List[Reaction],
+  replies: List[Reply])
+

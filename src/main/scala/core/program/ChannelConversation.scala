@@ -2,7 +2,7 @@ package slacks.core.program
 
 import providers.slack.algebra._
 import providers.slack.models._
-import slacks.core.config.SlackChannelReadConfig
+import slacks.core.config.{SlackChannelReadConfig, SlackChannelReadRepliesConfig}
 
 import akka.actor._
 import akka.http.scaladsl.{Http, HttpExt}
@@ -46,6 +46,34 @@ object ChannelConversationInterpreter {
     futureDelay[Stack, Messages](Await.result((actor ? GetChannelHistory).mapTo[Messages], timeout.duration))
   }
  
+  private def getChannelConversationHistoryFromSlack(channelId: ChannelId, 
+                                                     cfg: SlackChannelReadRepliesConfig[String], 
+                                                     token: SlackAccessToken[String],
+                                                     httpService : HttpService)(implicit actorSystem : ActorSystem, actorMat: ActorMaterializer) = {
+    import akka.pattern.{ask, pipe}
+    import scala.concurrent._
+    import scala.concurrent.duration._
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    val actor = actorSystem.actorOf(Props(new SlackConversationHistoryActor(channelId, cfg, token, httpService)))
+    implicit val timeout = Timeout(cfg.timeout seconds)
+    // TODO: Once Eff-Monad upgrades to allow waitFor, retryUntil, we will take
+    // this abomination out.
+    // Rationale for allowing the sleep to occur is because the ask i.e. ? will
+    // occur before the http-request which would return a None.
+    Thread.sleep(cfg.timeout * 1000)
+    futureDelay[Stack, SievedMessages](Await.result((actor ? GetConversationHistory).mapTo[SievedMessages], timeout.duration))
+  }
+ 
+  def getChannelConversationHistory(channelId: ChannelId,
+                                    cfg: SlackChannelReadRepliesConfig[String], 
+                                    httpService : HttpService)(implicit actorSystem:
+                                    ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, SievedMessages] = for {
+    token    <- ask[Stack, SlackAccessToken[String]]
+    _        <- tell[Stack, String]("[Get-Channel-Conversation-History] Slack access token retrieved.")
+    messages <- getChannelConversationHistoryFromSlack(channelId, cfg, token, httpService)   
+    _        <- tell[Stack, String]("[Get-Channel-Conversation-History] Slack channel(s) info retrieved.")
+  } yield messages
 
   /** 
     * Obtain the channel's history(from all time) from Slack based on the token,

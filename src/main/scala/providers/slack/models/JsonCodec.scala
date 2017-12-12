@@ -21,6 +21,8 @@ object JsonCodec {
   implicit val slackReactionDec : Decoder[Reaction] = deriveDecoder[Reaction]
   implicit val slackAttachmentEnc : Encoder[Attachment] = deriveEncoder[Attachment]
   implicit val slackAttachmentDec : Decoder[Attachment] = deriveDecoder[Attachment]
+  implicit val slackReplyDec : Decoder[Reply] = deriveDecoder[Reply]
+  implicit val slackReplyEnc : Encoder[Reply] = deriveEncoder[Reply]
   implicit val slackMessage: Decoder[Message] = new Decoder[Message] {
     final def apply(c: HCursor): Decoder.Result[Message] =
       for {

@@ -20,6 +20,8 @@ object Config {
   val channelListConfig : NonEmptyList[ConfigValidation] Either SlackChannelListConfig[String] = ConfigValidator.validateChannelConfig(config.getConfig("slacks.api.channel.list")).toEither
 
   val channelReadConfig : NonEmptyList[ConfigValidation] Either SlackChannelReadConfig[String] = ConfigValidator.validateChannelReadConfig(config.getConfig("slacks.api.channel.read")).toEither
+
+  val channelReadRepliesConfig : NonEmptyList[ConfigValidation] Either SlackChannelReadRepliesConfig[String] = ConfigValidator.validateChannelReadRepliesConfig(config.getConfig("slacks.api.conversation.read.replies")).toEither
 }
 
 sealed trait ConfigValidation {
@@ -103,10 +105,16 @@ sealed trait ConfigValidator {
 case class SlackCredentials(clientId: String, clientSecretKey: String)
 case class SlackChannelListConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackChannelReadConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
+case class SlackChannelReadRepliesConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackAuthConfig[A](url : String, params : List[ParamType[A]])
 case class SlackAccessConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 
 object ConfigValidator extends ConfigValidator {
+
+  def validateChannelReadRepliesConfig(config: Config) = 
+    (validateUrl(config),
+     validateParams(config),
+     validateTimeout(config)).map3((url, params, timeout) ⇒ SlackChannelReadRepliesConfig(url, params, timeout))
 
   def validateChannelReadConfig(config: Config) = 
     (validateUrl(config),
