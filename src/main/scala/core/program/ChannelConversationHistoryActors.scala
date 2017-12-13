@@ -24,8 +24,13 @@ import scala.concurrent.Future
   * @param httpService
   */
 
-case class SievedMessages(messages : List[BotAttachmentMessage])
+case class SievedMessages(
+  botMessages : List[BotAttachmentMessage],
+  userAttachmentMessages: List[UserAttachmentMessage]
+)
+
 case object GetConversationHistory
+
 class SlackConversationHistoryActor(channelId: ChannelId,
                                     cfg : SlackChannelReadRepliesConfig[String],
                                     token : SlackAccessToken[String],
@@ -53,7 +58,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   implicit val http = Http(context.system)
   private val defaultUri = s"${cfg.url}?channel=${channelId}&token=${token.access_token}&limit=1000"
   private def continuationUri = (cursor:String) ⇒ defaultUri + s"&limit=1000&cursor=${cursor}"
-  private var localStorage : SievedMessages = SievedMessages(Nil)
+  private var localStorage : SievedMessages = SievedMessages(Nil, Nil)
 
   override def preStart() = {
     httpService.makeSingleRequest.run(defaultUri).pipeTo(self)
@@ -94,6 +99,29 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     }
   }
 
+  // Locates all messages sent by regular slack users (i.e. non-bots) 
+  val findAllUserAttachmentMessages : Kleisli[List, io.circe.Json, UserAttachmentMessage] = Kleisli{ (json : io.circe.Json) ⇒
+    val userMessagesWithAttachments = 
+      root.messages.each.filter{ (j: io.circe.Json) ⇒
+        val r  = root.`type`.string.getOption(j) != None && root.`type`.string.exist(_ == "message")(j)
+        val r2 = root.subtype.string.getOption(j) == None
+        val r3 = root.attachments.arr.getOption(j) != None
+        val r4 = root.bot_id.string.getOption(j) == None
+        r && r2 && r3 && r4
+      }.obj.getAll(json)
+
+    userMessagesWithAttachments.map{
+      message ⇒
+        val messageJ : io.circe.Json = Json.fromJsonObject(message)
+        val userId    = root.user.string.getOption(messageJ).getOrElse("empty-user-id")
+        val botId     = "empty-bot-id"
+        val `type`    = root.`type`.string.getOption(messageJ).getOrElse("empty-message-type")
+        val txt       = root.text.string.getOption(messageJ).getOrElse("empty-text")
+        val timestamp = root.ts.string.getOption(messageJ).getOrElse("empty-timestamp")
+        UserAttachmentMessage(`type`, user = userId, bot_id = botId, text = txt, ts = timestamp, attachments = extractUserAttachments(message), reactions = extractUserReactions(message), replies = extractUserReplies(message))
+    }
+  }
+
   // Extract the bot's "replies" from the json object
   val extractBotReplies : Kleisli[List, io.circe.JsonObject, Reply] = Kleisli{ (o: io.circe.JsonObject) ⇒
     import JsonCodec.slackReplyDec
@@ -103,14 +131,25 @@ class SlackConversationHistoryActor(channelId: ChannelId,
       case None ⇒ List.empty[Reply]
     }
   }
+  val extractUserReplies = extractBotReplies
 
   // Extract the bot's "attachments" from the json object
-  val extractBotAttachments : Kleisli[List, io.circe.JsonObject, Attachment] = Kleisli{ (o : io.circe.JsonObject) ⇒
-    import JsonCodec.slackAttachmentDec
+  val extractBotAttachments : Kleisli[List, io.circe.JsonObject, BotAttachment] = Kleisli{ (o : io.circe.JsonObject) ⇒
+    import JsonCodec.slackBotAttachmentDec
     val json : io.circe.Json = Json.fromJsonObject(o)
     root.attachments.arr.getOption(json) match {
-      case Some(xs : Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[Attachment].getOrElse(Attachment("","","",0L,"",Nil))).toList
-      case None ⇒ List.empty[Attachment]
+      case Some(xs : Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[BotAttachment].getOrElse(BotAttachment("","","",0L,"",Nil))).toList
+      case None ⇒ List.empty[BotAttachment]
+    }
+  }
+
+  // Extract the user's "attachments" from the json object
+  val extractUserAttachments : Kleisli[List, io.circe.JsonObject, UserAttachment] = Kleisli{ (o : io.circe.JsonObject) ⇒
+    import JsonCodec.slackUserAttachmentDec
+    val json : io.circe.Json = Json.fromJsonObject(o)
+    root.attachments.arr.getOption(json) match {
+      case Some(xs : Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[UserAttachment].getOrElse(UserAttachment("","","","","",0L,"","","",0,0))).toList
+      case None ⇒ List.empty[UserAttachment]
     }
   }
 
@@ -123,8 +162,11 @@ class SlackConversationHistoryActor(channelId: ChannelId,
       case None ⇒ List.empty[Reaction]
     }
   }
+  val extractUserReactions = extractBotReactions
 
-  // Using Lens, we sieve out the non-bot related messages
+  // Using Lens, we sieve out the "file_share" messages sent by regular users
+  // and the complication here is that we sieved through the entire content
+  // looking for "file_comment" which relates to "file_share" messages.
   // TODO : continue fleshing out the implementation
   val findAllFileSharesWithReactions : Kleisli[List, io.circe.Json, io.circe.JsonObject] = Kleisli{ (json : io.circe.Json) ⇒
     root.messages.each.filter{ (j:io.circe.Json) ⇒
@@ -146,18 +188,17 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   // and the local state is updated while we push on with the data.
   //
   val sieveJsonAndNextCursor : Eff[S2, Option[String]] = for {
-    datum      <- ask[S2, ByteString]
-     _         <- tell[S2, String]("[Get-Channel-History-Actor] Collected the json data from ctx.")
-    json       <- values[S2, List[io.circe.Json]](parse(datum.utf8String).getOrElse(Json.Null) :: Nil)
-     _         <- tell[S2, String]("[Get-Channel-History-Actor] Converted the data to a json string.")
-    botData    <- values[S2, List[BotAttachmentMessage]](findAllBotMessages(json head))
-     _         <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for bot messages.")
-    //nonBotData <- values[S2, List[io.circe.JsonObject]](findAllFileSharesWithReactions(json head))
-     _         <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for non-bot messages.")
-    cursor     <- fromOption[S2, String](getNextPage(json head))
-     _         <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for next-cursor.")
-    _          <- modify[S2, SievedMessages]((m:SievedMessages) ⇒ {localStorage = m.copy(messages = m.messages ++ botData); localStorage})
-    //_          <- modify[S2, SievedMessages]((m:SievedMessages) ⇒ {localStorage = m.copy(messages = m.messages ++ botData ++ nonBotData); localStorage})
+    datum       <- ask[S2, ByteString]
+     _          <- tell[S2, String]("[Get-Channel-History-Actor] Collected the json data from ctx.")
+    json        <- values[S2, List[io.circe.Json]](parse(datum.utf8String).getOrElse(Json.Null) :: Nil)
+     _          <- tell[S2, String]("[Get-Channel-History-Actor] Converted the data to a json string.")
+    botData     <- values[S2, List[BotAttachmentMessage]](findAllBotMessages(json head))
+     _          <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for bot messages.")
+    userAttData <- values[S2, List[UserAttachmentMessage]](findAllUserAttachmentMessages(json head))
+     _          <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for user attachment messages.")
+    cursor      <- fromOption[S2, String](getNextPage(json head))
+     _          <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for next-cursor.")
+     _          <- modify[S2, SievedMessages]((m:SievedMessages) ⇒ {localStorage = m.copy(botMessages = m.botMessages ++ botData, userAttachmentMessages = m.userAttachmentMessages ++ userAttData); localStorage})
   } yield cursor.some
 
   def receive = {
@@ -179,7 +220,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
         case false ⇒
           log.warning("[Get-Conversation-History-Actor] No more further JSON data detected from Http stream.")
         case true ⇒
-          log.debug(s"[Get-Conversation-History-Actor][local-storage] ${localStorage.messages.size}")
+          log.debug(s"[Get-Conversation-History-Actor][local-storage] bot-messages: ${localStorage.botMessages.size}, user-attachment-messages: ${localStorage.userAttachmentMessages.size}")
           log.info(s"[Get-Conversation-History-Actor] following the cursor to retrieve more data...")
           httpService.makeSingleRequest.run(continuationUri(cursor.get)).pipeTo(self)
       }

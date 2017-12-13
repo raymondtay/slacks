@@ -35,11 +35,11 @@ case class Message(
   ts: String,      // timestamp of the message
   text: String,    // text found in channel
   bot_id: String,  // the bot's id, if any
-  attachments : List[Attachment], // list of attachments
+  attachments : List[BotAttachment], // list of attachments
   reactions : List[Reaction]      // list of reactions to message
 )
 
-case class Attachment(
+case class BotAttachment(
   fallback : String,
   text : String,
   pretext : String,
@@ -61,8 +61,31 @@ case class BotAttachmentMessage(
   user: String = "",
   bot_id: String,
   text: String,
-  attachments: List[Attachment],
+  attachments: List[BotAttachment],
   ts: String,
   reactions: List[Reaction],
   replies: List[Reply])
 
+case class UserAttachment(
+  fallback: String,
+  service_icon : String,
+  from_url : String,
+  text : String, 
+  title_link : String,
+  id : Long,
+  service_name : String,
+  title : String,
+  thumb_url : String,
+  thumb_width : Int,
+  thumb_height : Int
+  )
+
+case class UserAttachmentMessage(
+  `type`: String,
+  user: String,
+  bot_id: String = "",
+  text: String,
+  attachments: List[UserAttachment],
+  ts: String,
+  reactions: List[Reaction],
+  replies: List[Reply])

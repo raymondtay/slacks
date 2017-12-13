@@ -29,14 +29,14 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
   The channel stack can be used to
     return the channels contained in the workspace           $getChannelListing
     return the detailed information on an individual channel $getChannelHistory
-    return bot messages carrying attachments on an individual channel $getChannelConversationHistory
+    return bot and user messages carrying attachments on an individual channel $getChannelConversationHistory
 
   OpenTracing Enabled
   --------------------------------------------------------------
   The channel stack can be used to
     return the channels contained in the workspace           $getChannelListingTraced
     return the detailed information on an individual channel $getChannelHistoryTraced
-    return bot messages carrying attachments on an individual channel $getChannelConversationHistoryTraced
+    return bot and user messages carrying attachments on an individual channel $getChannelConversationHistoryTraced
   """
 
   val simulatedRoute = 
@@ -106,11 +106,12 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
       import slacks.core.config.Config
       Config.channelReadRepliesConfig match { // this tests the configuration loaded in application.conf
         case Right(cfg) ⇒
-          val (botMessages, logInfo) =
+          val (messages, logInfo) =
             Await.result(
               ChannelConversationInterpreter.getChannelConversationHistory(channelId, cfg, new FakeChannelConversationHistoryHttpService).
                 runReader(SlackAccessToken("fake-slack-access-token", "channels:history" :: Nil)).  runWriter.runSequential, 9 second)
-          botMessages.messages.size == 2
+          messages.botMessages.size == 2
+          messages.userAttachmentMessages.size == 2
         case Left(_)  ⇒ false
       }
   }
@@ -130,18 +131,19 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
       import slacks.core.config.Config
       Config.channelReadRepliesConfig match { // this tests the configuration loaded in application.conf
         case Right(cfg) ⇒
-          val (botMessageProcess, logs) =
+          val (messageProcess, logs) =
               traceGetChannelConversationHistories(cfg,
                                                    channelId,
                                                    new FakeChannelConversationHistoryHttpService,
                                                    message,
                                                    SlackAccessToken("fake-slack-access-token", "channels:history" :: Nil)).runReader(tracer).runWriter.runEither.runWriter.runEval.run
-          botMessageProcess match {
+          messageProcess match {
             case Left(error) ⇒ false // should not happen
             case Right(datum) ⇒
-              val (actualBotMessagesFuture, tracerLogs) = datum
-              val (botMessages, botLogs) = Await.result(actualBotMessagesFuture, 2 seconds)
-              botMessages.messages.size == 2
+              val (actualMessagesFuture, tracerLogs) = datum
+              val (messages, botLogs) = Await.result(actualMessagesFuture, 2 seconds)
+              messages.botMessages.size == 2
+              messages.userAttachmentMessages.size == 2
           }
 
         case Left(_)  ⇒ false

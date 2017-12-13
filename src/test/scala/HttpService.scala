@@ -114,6 +114,39 @@ class FakeChannelConversationHistoryHttpService extends HttpService {
               }
            ]
         },
+
+        {
+         "type" : "message",
+         "attachments" : [
+            {
+               "id" : 1,
+               "title_link" : "https://www.fastcodesign.com/90153387/inside-pinterests-12-person-ai-team-that-is-taking-on-google",
+               "from_url" : "https://www.fastcodesign.com/90153387/inside-pinterests-12-person-ai-team-that-is-taking-on-google",
+               "image_height" : 250,
+               "text" : "Google has hundreds of researchers working on visual machine perception. Pinterest has a fraction of that. Here’s how the pinning service could still win the race to master visual search.",
+               "ts" : 1513004403,
+               "service_icon" : "https://www.fastcodesign.com/apple-touch-icon.png?v=2",
+               "fallback" : "Co.Design: Inside Pinterest’s 12-Person AI Team That Is Taking On Google",
+               "image_bytes" : 321483,
+               "image_url" : "https://images.fastcompany.net/image/upload/w_1280,f_auto,q_auto,fl_lossy/wp-cms/uploads/sites/4/2017/12/p-1-pinterest-ai-deep-dive.jpg",
+               "title" : "Inside Pinterest’s 12-Person AI Team That Is Taking On Google",
+               "image_width" : 444,
+               "service_name" : "Co.Design"
+            }
+         ],
+         "user" : "U0F3F6F38",
+         "text" : "<https://www.fastcodesign.com/90153387/inside-pinterests-12-person-ai-team-that-is-taking-on-google>",
+         "reactions" : [
+            {
+               "count" : 1,
+               "users" : [
+                  "U58LY38Q6"
+               ],
+               "name" : "clap"
+            }
+         ],
+         "ts" : "1513041522.000212"
+        },
  
         {
            "type" : "message",
