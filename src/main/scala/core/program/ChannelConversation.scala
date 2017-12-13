@@ -65,6 +65,15 @@ object ChannelConversationInterpreter {
     futureDelay[Stack, SievedMessages](Await.result((actor ? GetConversationHistory).mapTo[SievedMessages], timeout.duration))
   }
  
+   /** 
+    * Obtain the channel's conversation history(from all time) from Slack based on the token,
+    * the process will handle the pagination mechanism embedded in Slack.
+    * 
+    * We leverage the conversation APIs in Slack 
+    * @param cfg configuration
+    * @param token slack token
+    * @param httpService 
+    */
   def getChannelConversationHistory(channelId: ChannelId,
                                     cfg: SlackChannelReadRepliesConfig[String], 
                                     httpService : HttpService)(implicit actorSystem:
@@ -79,10 +88,12 @@ object ChannelConversationInterpreter {
     * Obtain the channel's history(from all time) from Slack based on the token,
     * the process will handle the pagination mechanism embedded in Slack.
     *
+    * We leverage the channel APIs in Slack
     * @param cfg configuration
     * @param token slack token
     * @param httpService 
     */
+  @deprecated("To be dropped in favour of 'conversation' APIs")
   def getChannelHistory(channelId: ChannelId,
                         cfg: SlackChannelReadConfig[String], 
                         httpService : HttpService)(implicit actorSystem:
@@ -119,6 +130,29 @@ object ChannelConversationInterpreter {
     _       <- tell[ChannelHistoryStack,String](s"Got the tracer from the context.").into[ChannelHistoryStack]
     result  <- traceEffect(getChannelHistory(channelId, cfg, httpService).runReader(token).runWriter.runSequential)(message).into[ChannelHistoryStack]
   } yield result
+
+  /** 
+    * Obtain the channel's conversations histories (from all time) from Slack based on the token,
+    * the process will handle the pagination mechanism embedded in Slack.
+    * This action is traced via OpenTracing. See http://opentracing.io
+    *
+    * @param cfg configuration
+    * @param token slack token
+    * @param message a map of (k,v) pairs to be passed for tracing 
+    * @param httpService
+    */
+  def traceGetChannelConversationHistories(cfg: SlackChannelReadRepliesConfig[String],
+                               channelId: String,
+                               httpService : HttpService,
+                               message : slacks.core.tracer.Message, 
+                               token : SlackAccessToken[String])
+                               (implicit actorSystem : ActorSystem, actorMat: ActorMaterializer) : Eff[ChannelHistoryStack, scala.concurrent.Future[(SievedMessages, List[String])]] =
+  for {
+    tracer  <- ask[ChannelHistoryStack, io.opentracing.Tracer].into[ChannelHistoryStack]
+    _       <- tell[ChannelHistoryStack,String](s"Got the tracer from the context.").into[ChannelHistoryStack]
+    result  <- traceEffect(getChannelConversationHistory(channelId, cfg, httpService).runReader(token).runWriter.runSequential)(message).into[ChannelHistoryStack]
+  } yield result
+
 }
 
 

@@ -44,6 +44,115 @@ class FakeChannelHistoryHttpService extends HttpService {
   }
 }
 
+class FakeChannelConversationHistoryHttpService extends HttpService {
+  import cats.data.Kleisli, cats.implicits._
+  import ContentTypes._
+  import scala.concurrent.Future
+  override def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) = Kleisli{ 
+    (_uri: String) ⇒ 
+        val jsonData = """
+        {
+   "has_more" : true,
+   "messages" : [
+      {
+         "type" : "message",
+         "ts" : "1513078965.000241",
+         "user" : "U0F3F6F38",
+         "text" : "<@U04MGHVRY> <https://blogs.microsoft.com/on-the-issues/?p=56086>",
+         "attachments" : [
+            {
+               "ts" : 1512990007,
+               "title_link" : "https://blogs.microsoft.com/on-the-issues/?p=56086",
+               "title" : "AI for Earth can be a game-changer for our planet - Microsoft on the Issues",
+               "service_name" : "Microsoft on the Issues",
+               "text" : "On the two-year anniversary of the Paris climate accord, the world’s government, civic and business leaders are coming together in Paris to discuss one of the most important issues and opportunities of our time, climate change. I’m excited to lead the Microsoft delegation at these meetings. While the experts’ warnings are dire, at Microsoft we...",
+               "thumb_height" : 576,
+               "service_icon" : "https://mscorpmedia.azureedge.net/mscorpmedia/2017/08/favicon-599dd744b8cac.jpg",
+               "thumb_width" : 1024,
+               "thumb_url" : "https://mscorpmedia.azureedge.net/mscorpmedia/2017/12/AI4Earth-1024x576.jpg",
+               "fallback" : "Microsoft on the Issues: AI for Earth can be a game-changer for our planet - Microsoft on the Issues",
+               "id" : 1,
+               "from_url" : "https://blogs.microsoft.com/on-the-issues/?p=56086"
+            }
+         ]
+      },
+        {
+           "type" : "message",
+           "bot_id" : "B0VD275DX",
+           "text" : "Hello. Another new user going by the name of Nancy Bernard (<mailto:nancy.bernard@mindshareworld.com|nancy.bernard@mindshareworld.com>) has passed through the Nugit gates. We've also added them to Mailchimp's Nugit Users list.  ",
+           "username" : "Zapier",
+           "ts" : "1513073709.000326",
+           "subtype" : "bot_message"
+        },
+        {
+           "type" : "message",
+           "bot_id" : "B3DGC7129",
+           "attachments" : [
+              {
+                 "image_url" : "https://media3.giphy.com/media/R54jhpzpARmVy/giphy-downsized.gif",
+                 "footer" : "Posted using /giphy",
+                 "image_height" : 194,
+                 "image_width" : 320,
+                 "fallback" : "giphy: https://giphy.com/gifs/shake-fist-angry-girl-shakes-R54jhpzpARmVy",
+                 "image_bytes" : 759548,
+                 "id" : 1,
+                 "title" : "shakes fist",
+                 "title_link" : "https://giphy.com/gifs/shake-fist-angry-girl-shakes-R54jhpzpARmVy",
+                 "is_animated" : true
+              }
+           ],
+           "text" : "",
+           "user" : "U5TEUA60Z",
+           "ts" : "1512625849.000036",
+           "reactions" : [
+              {
+                 "name" : "joy",
+                 "count" : 1,
+                 "users" : [
+                    "U7V7V7NFM"
+                 ]
+              }
+           ]
+        },
+ 
+        {
+           "type" : "message",
+           "bot_id" : "B0VD275DX",
+           "attachments" : [
+              {
+                 "ts" : 1512990007,
+                 "title_link" : "https://blogs.microsoft.com/on-the-issues/?p=56086",
+                 "title" : "AI for Earth can be a game-changer for our planet - Microsoft on the Issues",
+                 "service_name" : "Microsoft on the Issues",
+                 "text" : "On the two-year anniversary of the Paris climate accord, the world’s government, civic and business leaders are coming together in Paris to discuss one of the most important issues and opportunities of our time, climate change. I’m excited to lead the Microsoft delegation at these meetings. While the experts’ warnings are dire, at Microsoft we...",
+                 "thumb_height" : 576,
+                 "service_icon" : "https://mscorpmedia.azureedge.net/mscorpmedia/2017/08/favicon-599dd744b8cac.jpg",
+                 "thumb_width" : 1024,
+                 "thumb_url" : "https://mscorpmedia.azureedge.net/mscorpmedia/2017/12/AI4Earth-1024x576.jpg",
+                 "fallback" : "Microsoft on the Issues: AI for Earth can be a game-changer for our planet - Microsoft on the Issues",
+                 "id" : 1,
+                 "from_url" : "https://blogs.microsoft.com/on-the-issues/?p=56086"
+              }
+           ],
+           "text" : "Test text",
+           "username" : "Xapier",
+           "ts" : "1513073709.000326",
+           "subtype" : "bot_message"
+        }
+ 
+     ],
+     "ok" : true,
+     "response_metadata" : {
+        "next_cursor" : ""
+     },
+     "pin_count" : 2 }""" 
+
+      Future.successful(
+        HttpResponse(entity = HttpEntity(`application/json`, jsonData))
+      )
+  }
+}
+
 class FakeOAuthHttpService extends HttpService {
   import cats.data.Kleisli, cats.implicits._
   import ContentTypes._

@@ -55,6 +55,10 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   private def continuationUri = (cursor:String) ⇒ defaultUri + s"&limit=1000&cursor=${cursor}"
   private var localStorage : SievedMessages = SievedMessages(Nil)
 
+  override def preStart() = {
+    httpService.makeSingleRequest.run(defaultUri).pipeTo(self)
+  }
+ 
   // collect the entire json data prior to processing.
   val extractDataFromHttpStream : Eff[S1, Future[ByteString]] = for {
     entity <- ask[S1, ResponseEntity]
@@ -72,27 +76,28 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   val findAllBotMessages : Kleisli[List, io.circe.Json, BotAttachmentMessage] = Kleisli{ (json: io.circe.Json) ⇒
     val botMessages =
       root.messages.each.filter{ (j: io.circe.Json) ⇒
-        val r  : Boolean = root.`type`.string.exist(_ == "message")(j)
-        val r2 : Boolean = root.bot_id.string.exist(_ != "")(j)
+        val r  : Boolean = root.`type`.string.getOption(j) != None && root.`type`.string.exist(_ == "message")(j)
+        val r2 : Boolean = root.bot_id.string.getOption(j) != None && root.bot_id.string.exist(_ != "")(j)
         val r3 : Boolean = root.attachments.arr.getOption(j) != None
         r && r2 && r3
       }.obj.getAll(json)
 
     botMessages.map{
       message ⇒
-        val messageJ : io.circe.Json = message.values.toList.head
+        val messageJ : io.circe.Json = Json.fromJsonObject(message)
+        val userId    = root.user.string.getOption(messageJ).getOrElse("empty-user-id")
         val botId     = root.bot_id.string.getOption(messageJ).getOrElse("empty-bot-id")
         val `type`    = root.`type`.string.getOption(messageJ).getOrElse("empty-message-type")
         val txt       = root.text.string.getOption(messageJ).getOrElse("empty-text")
         val timestamp = root.ts.string.getOption(messageJ).getOrElse("empty-timestamp")
-        BotAttachmentMessage(`type`, user = "", bot_id = botId, text = txt, ts = timestamp, attachments = extractBotAttachments(message), reactions = extractBotReactions(message), replies = extractBotReplies(message))
+        BotAttachmentMessage(`type`, user = userId, bot_id = botId, text = txt, ts = timestamp, attachments = extractBotAttachments(message), reactions = extractBotReactions(message), replies = extractBotReplies(message))
     }
   }
 
   // Extract the bot's "replies" from the json object
   val extractBotReplies : Kleisli[List, io.circe.JsonObject, Reply] = Kleisli{ (o: io.circe.JsonObject) ⇒
     import JsonCodec.slackReplyDec
-    val json : io.circe.Json = o.values.toList.head
+    val json : io.circe.Json = Json.fromJsonObject(o)
     root.replies.arr.getOption(json) match {
       case Some(xs : Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[Reply].getOrElse(Reply("",""))).toList
       case None ⇒ List.empty[Reply]
@@ -102,7 +107,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   // Extract the bot's "attachments" from the json object
   val extractBotAttachments : Kleisli[List, io.circe.JsonObject, Attachment] = Kleisli{ (o : io.circe.JsonObject) ⇒
     import JsonCodec.slackAttachmentDec
-    val json : io.circe.Json = o.values.toList.head
+    val json : io.circe.Json = Json.fromJsonObject(o)
     root.attachments.arr.getOption(json) match {
       case Some(xs : Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[Attachment].getOrElse(Attachment("","","",0L,"",Nil))).toList
       case None ⇒ List.empty[Attachment]
@@ -112,7 +117,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   // Extract the "reactions" from the json object
   val extractBotReactions : Kleisli[List, io.circe.JsonObject, Reaction] = Kleisli{ (o : io.circe.JsonObject) ⇒
     import JsonCodec.slackReactionDec
-    val json : io.circe.Json = o.values.toList.head
+    val json : io.circe.Json = Json.fromJsonObject(o)
     root.reactions.arr.getOption(json) match {
       case Some(xs:Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[Reaction].getOrElse(Reaction("",Nil,0L))).toList
       case None ⇒ List.empty[Reaction]
@@ -170,9 +175,9 @@ class SlackConversationHistoryActor(channelId: ChannelId,
         sieveJsonAndNextCursor.runReader(datum).runList.runWriterNoLog.evalState(localStorage).runOption.run head
       ).flatten.head
 
-      cursor.isDefined match {
+      cursor.isDefined && !cursor.get.isEmpty match {
         case false ⇒
-          log.warning("[Get-Conversation-History-Actor] Error detected during collection of JSON data from Http stream.")
+          log.warning("[Get-Conversation-History-Actor] No more further JSON data detected from Http stream.")
         case true ⇒
           log.debug(s"[Get-Conversation-History-Actor][local-storage] ${localStorage.messages.size}")
           log.info(s"[Get-Conversation-History-Actor] following the cursor to retrieve more data...")
