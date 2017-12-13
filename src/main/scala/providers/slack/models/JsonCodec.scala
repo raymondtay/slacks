@@ -58,6 +58,8 @@ object JsonCodec {
       Message(tpe, subtype, ts, text, botId, atts, reacs)
     }
   }
+  implicit val slackUserFileCommentDec : Decoder[UserFileComment] = deriveDecoder[UserFileComment]
+  implicit val slackUserFileCommentEnc : Encoder[UserFileComment] = deriveEncoder[UserFileComment]
   implicit val slackMessages : Decoder[SlackMessage] = deriveDecoder[SlackMessage]
 
 }

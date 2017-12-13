@@ -26,7 +26,8 @@ import scala.concurrent.Future
 
 case class SievedMessages(
   botMessages : List[BotAttachmentMessage],
-  userAttachmentMessages: List[UserAttachmentMessage]
+  userAttachmentMessages: List[UserAttachmentMessage],
+  userFileShareMessages : List[UserFileShareMessage]
 )
 
 case object GetConversationHistory
@@ -58,7 +59,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   implicit val http = Http(context.system)
   private val defaultUri = s"${cfg.url}?channel=${channelId}&token=${token.access_token}&limit=1000"
   private def continuationUri = (cursor:String) ⇒ defaultUri + s"&limit=1000&cursor=${cursor}"
-  private var localStorage : SievedMessages = SievedMessages(Nil, Nil)
+  private var localStorage : SievedMessages = SievedMessages(Nil, Nil, Nil)
 
   override def preStart() = {
     httpService.makeSingleRequest.run(defaultUri).pipeTo(self)
@@ -119,6 +120,63 @@ class SlackConversationHistoryActor(channelId: ChannelId,
         val txt       = root.text.string.getOption(messageJ).getOrElse("empty-text")
         val timestamp = root.ts.string.getOption(messageJ).getOrElse("empty-timestamp")
         UserAttachmentMessage(`type`, user = userId, bot_id = botId, text = txt, ts = timestamp, attachments = extractUserAttachments(message), reactions = extractUserReactions(message), replies = extractUserReplies(message))
+    }
+  }
+
+  // Parses the comments in the json structure looking for the matching file
+  // comments
+  def getFileComments(fileId: String) : Kleisli[List, io.circe.Json, UserFileComment] = Kleisli{ (json: io.circe.Json) ⇒
+    val matchedCommentsForFile = 
+      root.messages.each.filter{ (j: io.circe.Json) ⇒
+        val r  = root.`type`.string.getOption(j) != None && root.`type`.string.exist(_ == "message")(j)
+        val r2 = root.subtype.string.getOption(j) != None && root.subtype.string.exist(_ == "file_comment")(j)
+        val r3 = root.file.obj.getOption(j) != None && root.file.id.string.exist(_ == fileId)(j)
+        r && r2 && r3
+      }.obj.getAll(json)
+
+    matchedCommentsForFile.map{ 
+      message ⇒
+        val messageJ : io.circe.Json = Json.fromJsonObject(message)
+        import JsonCodec.slackUserFileCommentDec
+        root.comment.obj.getOption(messageJ) match {
+          case Some(x : io.circe.JsonObject) ⇒ Json.fromJsonObject(x).as[UserFileComment].getOrElse(UserFileComment("",0L,0L,"",false,""))
+          case None ⇒ UserFileComment("",0L,0L,"",false,"")
+        }
+    }
+  }
+
+  // Locate all messages that are shared by regular slack users (i.e. non-bots)
+  val findAllSharedFileContentByUsers : Kleisli[List, io.circe.Json, UserFileShareMessage] = Kleisli{ (json: io.circe.Json) ⇒
+    val sharedFileMessages = 
+      root.messages.each.filter{ (j: io.circe.Json) ⇒
+        val r  = root.`type`.string.getOption(j) != None && root.`type`.string.exist(_ == "message")(j)
+        val r2 = root.subtype.string.getOption(j) != None && root.subtype.string.exist(_ == "file_share")(j)
+        val r3 = root.file.obj.getOption(j) != None
+        val r4 = root.username.string.getOption(j) != None && root.username.string.exist(_ != "")(j)
+        r && r2 && r3 && r4
+      }.obj.getAll(json)
+
+    sharedFileMessages.map{ 
+      fileMessage ⇒
+        val messageJ : io.circe.Json = Json.fromJsonObject(fileMessage)
+        val `type` = root.`type`.string.getOption(messageJ).getOrElse("empty-message-type")
+        val subtype = root.subtype.string.getOption(messageJ).getOrElse("empty-message-subtype")
+        val txt = root.text.string.getOption(messageJ).getOrElse("empty-text")
+        val fileId = root.file.id.string.getOption(messageJ).getOrElse("empty-file-id")
+        val created = root.file.created.long.getOption(messageJ).getOrElse(0L)
+        val timestamp = root.file.timestamp.long.getOption(messageJ).getOrElse(0L)
+        val fileName = root.file.name.string.getOption(messageJ).getOrElse("empty-file-name")
+        val fileTitle = root.file.title.string.getOption(messageJ).getOrElse("empty-title")
+        val fileType = root.file.filetype.string.getOption(messageJ).getOrElse("empty-filetype")
+        val filePrettyType = root.file.pretty_type.string.getOption(messageJ).getOrElse("empty-pretty_type")
+        val userId = root.user.string.getOption(messageJ).getOrElse("empty-user")
+        val userName = root.username.string.getOption(messageJ).getOrElse("empty-username")
+        val ts = root.ts.string.getOption(messageJ).getOrElse("empty-ts")
+        val isExternal = root.file.is_external.boolean.getOption(messageJ).getOrElse(false)
+        val thumb1024 = root.file.thumb_1024.string.getOption(messageJ).getOrElse("empty-thumb_1024")
+        val permalink = root.file.permalink.string.getOption(messageJ).getOrElse("empty-permalink")
+        val externalType = root.file.external_type.string.getOption(messageJ).getOrElse("empty-external_type")
+        UserFileShareMessage(`type`, subtype, txt, fileId, created, timestamp, fileName, fileTitle, fileType, filePrettyType, userId, isExternal, externalType, userName, thumb1024, permalink, getFileComments(fileId)(json), ts)
     }
   }
 
@@ -196,9 +254,11 @@ class SlackConversationHistoryActor(channelId: ChannelId,
      _          <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for bot messages.")
     userAttData <- values[S2, List[UserAttachmentMessage]](findAllUserAttachmentMessages(json head))
      _          <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for user attachment messages.")
+    userFSData  <- values[S2, List[UserFileShareMessage]](findAllSharedFileContentByUsers(json head))
+     _          <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for file-share messages.")
     cursor      <- fromOption[S2, String](getNextPage(json head))
      _          <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for next-cursor.")
-     _          <- modify[S2, SievedMessages]((m:SievedMessages) ⇒ {localStorage = m.copy(botMessages = m.botMessages ++ botData, userAttachmentMessages = m.userAttachmentMessages ++ userAttData); localStorage})
+     _          <- modify[S2, SievedMessages]((m:SievedMessages) ⇒ {localStorage = m.copy(botMessages = m.botMessages ++ botData, userAttachmentMessages = m.userAttachmentMessages ++ userAttData, userFileShareMessages = m.userFileShareMessages ++ userFSData); localStorage})
   } yield cursor.some
 
   def receive = {

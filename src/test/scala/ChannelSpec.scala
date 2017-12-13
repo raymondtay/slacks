@@ -112,6 +112,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
                 runReader(SlackAccessToken("fake-slack-access-token", "channels:history" :: Nil)).  runWriter.runSequential, 9 second)
           messages.botMessages.size == 2
           messages.userAttachmentMessages.size == 2
+          messages.userFileShareMessages.foldLeft(0)((acc,e) ⇒ e.comments.size + acc) == 5
         case Left(_)  ⇒ false
       }
   }

@@ -89,3 +89,33 @@ case class UserAttachmentMessage(
   ts: String,
   reactions: List[Reaction],
   replies: List[Reply])
+
+case class UserFileShareMessage(
+  `type`: String,
+  subtype: String,
+  text : String,
+  id : String,
+  created : Long,
+  timestamp : Long, 
+  name : String,
+  title : String,
+  filetype : String,
+  pretty_type : String,
+  user : String,
+  is_external : Boolean,
+  external_type : String,
+  username : String,
+  thumb_1024 : String,
+  permalink : String,
+  comments : List[UserFileComment], 
+  ts : String
+  )
+
+case class UserFileComment(
+  id : String,
+  created : Long,
+  timestamp : Long,
+  user : String,
+  is_intro : Boolean,
+  comment : String
+  )
