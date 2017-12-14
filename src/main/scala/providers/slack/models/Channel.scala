@@ -113,9 +113,6 @@ case class UserFileShareMessage(
 
 case class UserFileComment(
   id : String,
-  created : Long,
   timestamp : Long,
-  user : String,
-  is_intro : Boolean,
-  comment : String
+  user : String
   )

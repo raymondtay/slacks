@@ -139,8 +139,8 @@ class SlackConversationHistoryActor(channelId: ChannelId,
         val messageJ : io.circe.Json = Json.fromJsonObject(message)
         import JsonCodec.slackUserFileCommentDec
         root.comment.obj.getOption(messageJ) match {
-          case Some(x : io.circe.JsonObject) ⇒ Json.fromJsonObject(x).as[UserFileComment].getOrElse(UserFileComment("",0L,0L,"",false,""))
-          case None ⇒ UserFileComment("",0L,0L,"",false,"")
+          case Some(x : io.circe.JsonObject) ⇒ Json.fromJsonObject(x).as[UserFileComment].getOrElse(UserFileComment("",0L,""))
+          case None ⇒ UserFileComment("",0L,"")
         }
     }
   }
