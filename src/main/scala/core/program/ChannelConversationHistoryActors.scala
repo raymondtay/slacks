@@ -80,58 +80,39 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   // (b) "reactions" can be absent
   //
   val findAllBotMessages : Kleisli[List, io.circe.Json, BotAttachmentMessage] = Kleisli{ (json: io.circe.Json) ⇒
+    import JsonCodecLens._
     val botMessages =
-      root.messages.each.filter{ (j: io.circe.Json) ⇒
-        val r  : Boolean = root.`type`.string.getOption(j) != None && root.`type`.string.exist(_ == "message")(j)
-        val r2 : Boolean = root.bot_id.string.getOption(j) != None && root.bot_id.string.exist(_ != "")(j)
-        val r3 : Boolean = root.attachments.arr.getOption(j) != None
-        r && r2 && r3
-      }.obj.getAll(json)
+      root.messages.each.filter{ (j: io.circe.Json) ⇒ isMessagePresentNMatched(json) }.obj.getAll(json)
 
     botMessages.map{
       message ⇒
         val messageJ : io.circe.Json = Json.fromJsonObject(message)
-        val userId    = root.user.string.getOption(messageJ).getOrElse("empty-user-id")
-        val botId     = root.bot_id.string.getOption(messageJ).getOrElse("empty-bot-id")
-        val `type`    = root.`type`.string.getOption(messageJ).getOrElse("empty-message-type")
-        val txt       = root.text.string.getOption(messageJ).getOrElse("empty-text")
-        val timestamp = root.ts.string.getOption(messageJ).getOrElse("empty-timestamp")
-        BotAttachmentMessage(`type`, user = userId, bot_id = botId, text = txt, ts = timestamp, attachments = extractBotAttachments(message), reactions = extractBotReactions(message), replies = extractBotReplies(message))
+        Applicative[Id].map8( getMessageValue(messageJ), getUserIdValue(messageJ), getBotIdValue(messageJ), getTextValue(messageJ), Applicative[Id].pure(extractBotAttachments(message)), getTimestampValue(messageJ), Applicative[Id].pure(extractBotReactions(message)), Applicative[Id].pure(extractBotReplies(message)))(BotAttachmentMessage.apply)
     }
   }
 
   // Locates all messages sent by regular slack users (i.e. non-bots) 
   val findAllUserAttachmentMessages : Kleisli[List, io.circe.Json, UserAttachmentMessage] = Kleisli{ (json : io.circe.Json) ⇒
+    import JsonCodecLens._
     val userMessagesWithAttachments = 
       root.messages.each.filter{ (j: io.circe.Json) ⇒
-        val r  = root.`type`.string.getOption(j) != None && root.`type`.string.exist(_ == "message")(j)
-        val r2 = root.subtype.string.getOption(j) == None
-        val r3 = root.attachments.arr.getOption(j) != None
-        val r4 = root.bot_id.string.getOption(j) == None
-        r && r2 && r3 && r4
+        Applicative[Id].map4(isMessagePresentNMatched(j), isAttachmentsFieldPresent(j), !isBotIdFieldPresent(j), !isSubtypeFieldPresent(j))(_ && _ && _ && _)
       }.obj.getAll(json)
 
     userMessagesWithAttachments.map{
       message ⇒
         val messageJ : io.circe.Json = Json.fromJsonObject(message)
-        val userId    = root.user.string.getOption(messageJ).getOrElse("empty-user-id")
-        val botId     = "empty-bot-id"
-        val `type`    = root.`type`.string.getOption(messageJ).getOrElse("empty-message-type")
-        val txt       = root.text.string.getOption(messageJ).getOrElse("empty-text")
-        val timestamp = root.ts.string.getOption(messageJ).getOrElse("empty-timestamp")
-        UserAttachmentMessage(`type`, user = userId, bot_id = botId, text = txt, ts = timestamp, attachments = extractUserAttachments(message), reactions = extractUserReactions(message), replies = extractUserReplies(message))
+        Applicative[Id].map8(getMessageValue(messageJ), getUserIdValue(messageJ), getBotIdValue(messageJ), getTextValue(messageJ), Applicative[Id].pure(extractUserAttachments(message)), getTimestampValue(messageJ), Applicative[Id].pure(extractUserReactions(message)), Applicative[Id].pure(extractUserReplies(message)))(UserAttachmentMessage.apply)
     }
   }
 
   // Parses the comments in the json structure looking for the matching file
   // comments
   def getFileComments(fileId: String) : Kleisli[List, io.circe.Json, UserFileComment] = Kleisli{ (json: io.circe.Json) ⇒
+    import JsonCodecLens._
     val matchedCommentsForFile = 
       root.messages.each.filter{ (j: io.circe.Json) ⇒
-        val r  = root.`type`.string.getOption(j) != None && root.`type`.string.exist(_ == "message")(j)
-        val r2 = root.subtype.string.getOption(j) != None && root.subtype.string.exist(_ == "file_comment")(j)
-        val r3 = root.file.obj.getOption(j) != None && root.file.id.string.exist(_ == fileId)(j)
-        r && r2 && r3
+        Applicative[Id].map3(isMessagePresentNMatched(j), isSubtypePresentNMatched("file_comment")(j), isFileFieldWithMatchingFileId(fileId)(j))(_ && _ && _)
       }.obj.getAll(json)
 
     matchedCommentsForFile.map{ 
@@ -147,36 +128,20 @@ class SlackConversationHistoryActor(channelId: ChannelId,
 
   // Locate all messages that are shared by regular slack users (i.e. non-bots)
   val findAllSharedFileContentByUsers : Kleisli[List, io.circe.Json, UserFileShareMessage] = Kleisli{ (json: io.circe.Json) ⇒
+    import JsonCodecLens._
     val sharedFileMessages = 
       root.messages.each.filter{ (j: io.circe.Json) ⇒
-        val r  = root.`type`.string.getOption(j) != None && root.`type`.string.exist(_ == "message")(j)
-        val r2 = root.subtype.string.getOption(j) != None && root.subtype.string.exist(_ == "file_share")(j)
-        val r3 = root.file.obj.getOption(j) != None
-        val r4 = root.username.string.getOption(j) != None && root.username.string.exist(_ != "")(j)
-        r && r2 && r3 && r4
+        Applicative[Id].map4(isMessagePresentNMatched(j), isSubtypePresentNMatched("file_share")(j), isFileFieldPresent(j), isUsernameFieldPresent(j))(_ && _ && _ && _)
       }.obj.getAll(json)
 
     sharedFileMessages.map{ 
       fileMessage ⇒
-        val messageJ : io.circe.Json = Json.fromJsonObject(fileMessage)
-        val `type` = root.`type`.string.getOption(messageJ).getOrElse("empty-message-type")
-        val subtype = root.subtype.string.getOption(messageJ).getOrElse("empty-message-subtype")
-        val txt = root.text.string.getOption(messageJ).getOrElse("empty-text")
-        val fileId = root.file.id.string.getOption(messageJ).getOrElse("empty-file-id")
-        val created = root.file.created.long.getOption(messageJ).getOrElse(0L)
-        val timestamp = root.file.timestamp.long.getOption(messageJ).getOrElse(0L)
-        val fileName = root.file.name.string.getOption(messageJ).getOrElse("empty-file-name")
-        val fileTitle = root.file.title.string.getOption(messageJ).getOrElse("empty-title")
-        val fileType = root.file.filetype.string.getOption(messageJ).getOrElse("empty-filetype")
-        val filePrettyType = root.file.pretty_type.string.getOption(messageJ).getOrElse("empty-pretty_type")
-        val userId = root.user.string.getOption(messageJ).getOrElse("empty-user")
-        val userName = root.username.string.getOption(messageJ).getOrElse("empty-username")
-        val ts = root.ts.string.getOption(messageJ).getOrElse("empty-ts")
-        val isExternal = root.file.is_external.boolean.getOption(messageJ).getOrElse(false)
-        val thumb1024 = root.file.thumb_1024.string.getOption(messageJ).getOrElse("empty-thumb_1024")
-        val permalink = root.file.permalink.string.getOption(messageJ).getOrElse("empty-permalink")
-        val externalType = root.file.external_type.string.getOption(messageJ).getOrElse("empty-external_type")
-        UserFileShareMessage(`type`, subtype, txt, fileId, created, timestamp, fileName, fileTitle, fileType, filePrettyType, userId, isExternal, externalType, userName, thumb1024, permalink, getFileComments(fileId)(json), ts)
+        val j : io.circe.Json = Json.fromJsonObject(fileMessage)
+        Applicative[Id].map18(getMessageValue(j), getSubtypeMessageValue(j), getTextValue(j), getFileIdValue(j),
+                              getCreatedValue(j), getTimestampValue(j), getFilenameValue(j), getFileTitleValue(j),
+                              getFileTypeValue(j), getFilePrettyTypeValue(j), getUserIdValue(j), getIsExternalValue(j),
+                              getExternalTypeValue(j), getUsernameValue(j), getThumb1024Value(j), getPermalinkValue(j),
+                              Applicative[Id].pure(getFileComments(getFileIdValue(j))(json)), getTimestampValue(j))(UserFileShareMessage.apply)
     }
   }
 
@@ -221,19 +186,6 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     }
   }
   val extractUserReactions = extractBotReactions
-
-  // Using Lens, we sieve out the "file_share" messages sent by regular users
-  // and the complication here is that we sieved through the entire content
-  // looking for "file_comment" which relates to "file_share" messages.
-  // TODO : continue fleshing out the implementation
-  val findAllFileSharesWithReactions : Kleisli[List, io.circe.Json, io.circe.JsonObject] = Kleisli{ (json : io.circe.Json) ⇒
-    root.messages.each.filter{ (j:io.circe.Json) ⇒
-      val r  : Boolean = root.`type`.string.exist(_ == "message")(j)
-      val r2 : Boolean = root.subtype.string.exist(_ == "file_share")(j)
-      val r3 : Boolean = root.attachments.arr.getOption(j) != None
-      r && r2 && r3
-    }.obj.getAll(json)
-  }
 
   // Using lens, we look for the next cursor if we can find it (which would
   // return as a Some(x) else its a None)

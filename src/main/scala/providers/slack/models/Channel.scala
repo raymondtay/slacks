@@ -96,7 +96,7 @@ case class UserFileShareMessage(
   text : String,
   id : String,
   created : Long,
-  timestamp : Long, 
+  timestamp : String, 
   name : String,
   title : String,
   filetype : String,
