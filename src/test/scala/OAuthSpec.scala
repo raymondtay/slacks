@@ -63,21 +63,19 @@ class OAuthSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck
       import OAuthInterpreter._
       import akka.testkit._
       import scala.concurrent._, duration._
- 
-      val timeout = 2.second.dilated
+
       val code = responseAs[String]
 
-      println(s"code: => $code")
       implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
       import slacks.core.config.Config
       Config.accessConfig match { // this tests the configuration loaded in application.conf
-        case Right(cfg) ⇒ 
+        case Right(cfg) ⇒
+          val timeout = cfg.timeout.second.dilated
           val token =
             Await.result(
               getSlackAccessToken(cfg, code, new FakeOAuthHttpService).
                 runReader(("raymond", "raymond-secret-key".some)).
                 runWriter.runSequential, timeout)
-          println(s"token: => $token")
           token._1.get.access_token === "test-token"
           token._1.get.scope === List("read")
         case Left(_)  ⇒ false
