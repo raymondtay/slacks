@@ -44,7 +44,6 @@ class OAuthSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck
       path("fake.slack.com/api/oauth.access") { // this must match application.conf
         parameters('client_id, 'client_secret, 'code) {
           (cId, cS, code) ⇒
-            println("SAW ME ????")
             val json = """
             {
               "access_token": "xoxp-23984754863-2348975623103",
@@ -62,8 +61,10 @@ class OAuthSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck
   def getAccessToken = {
     Get("/fake.slack.com") ~> simulatedRoute ~> check {
       import OAuthInterpreter._
+      import akka.testkit._
       import scala.concurrent._, duration._
-  
+ 
+      val timeout = 2.second.dilated
       val code = responseAs[String]
 
       implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
@@ -74,7 +75,7 @@ class OAuthSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck
             Await.result(
               getSlackAccessToken(cfg, code, new FakeOAuthHttpService).
                 runReader(("raymond", "raymond-secret-key".some)).
-                runWriter.runSequential, 2 second)
+                runWriter.runSequential, timeout)
           token._1.get.access_token === "test-token"
           token._1.get.scope === List("read")
         case Left(_)  ⇒ false
