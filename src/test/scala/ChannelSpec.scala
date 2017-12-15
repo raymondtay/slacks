@@ -104,7 +104,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
 
       implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
       import slacks.core.config.Config
-      Config.channelReadRepliesConfig match { // this tests the configuration loaded in application.conf
+      Config.channelReadConfig match { // this tests the configuration loaded in application.conf
         case Right(cfg) ⇒
           val (messages, logInfo) =
             Await.result(
@@ -130,7 +130,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
 
       implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
       import slacks.core.config.Config
-      Config.channelReadRepliesConfig match { // this tests the configuration loaded in application.conf
+      Config.channelReadConfig match { // this tests the configuration loaded in application.conf
         case Right(cfg) ⇒
           val (messageProcess, logs) =
               traceGetChannelConversationHistories(cfg,

@@ -58,6 +58,33 @@ object JsonCodec {
       Message(tpe, subtype, ts, text, botId, atts, reacs)
     }
   }
+  implicit val slackUserDec : Decoder[User] = new Decoder[User] {
+    final def apply(c: HCursor) : Decoder.Result[User] = 
+      for {
+        userId         <- Monad[Id].pure(c.downField("id").as[String])
+        teamId         <- Monad[Id].pure(c.downField("team_id").as[String])
+        name           <- Monad[Id].pure(c.downField("name").as[String])
+        deleted        <- Monad[Id].pure(c.downField("deleted").as[Boolean])
+        isBot          <- Monad[Id].pure(c.downField("is_bot").as[Boolean])
+        updated        <- Monad[Id].pure(c.downField("updated").as[Long])
+        isOwner        <- Monad[Id].pure(c.getOrElse("is_owner")(false))
+        isPrimaryOwner <- Monad[Id].pure(c.getOrElse("is_primary_owner")(false))
+        email       <- Monad[Id].pure(c.downField("profile").getOrElse("email")(""))
+        firstName   <- Monad[Id].pure(c.downField("profile").getOrElse("first_name")(""))
+        realName    <- Monad[Id].pure(c.downField("profile").getOrElse("real_name")(""))
+        lastName    <- Monad[Id].pure(c.downField("profile").getOrElse("last_name")(""))
+        displayName <- Monad[Id].pure(c.downField("profile").getOrElse("display_name")(""))
+        statusText  <- Monad[Id].pure(c.downField("profile").getOrElse("status_text")(""))
+        statusEmoji <- Monad[Id].pure(c.downField("profile").getOrElse("status_emoji")(""))
+        title       <- Monad[Id].pure(c.downField("profile").getOrElse("title")(""))
+        skype       <- Monad[Id].pure(c.downField("profile").getOrElse("skype")(""))
+        phone       <- Monad[Id].pure(c.downField("profile").getOrElse("phone")(""))
+        image512    <- Monad[Id].pure(c.downField("profile").getOrElse("image_512")(""))
+      } yield User(userId, teamId, name, deleted, firstName, realName, lastName, displayName, email, isBot, updated, statusText, statusEmoji, title, skype, phone, isOwner, isPrimaryOwner, image512)
+  }
+  implicit val slackUserEnc : Encoder[User] = deriveEncoder[User]
+  implicit val slackUsersDec : Decoder[Users] = deriveDecoder[Users]
+  implicit val slackUsersEnc : Encoder[Users] = deriveEncoder[Users]
   implicit val slackUserFileCommentDec : Decoder[UserFileComment] = deriveDecoder[UserFileComment]
   implicit val slackUserFileCommentEnc : Encoder[UserFileComment] = deriveEncoder[UserFileComment]
   implicit val slackMessages : Decoder[SlackMessage] = deriveDecoder[SlackMessage]

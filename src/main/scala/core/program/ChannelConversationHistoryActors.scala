@@ -2,7 +2,7 @@ package slacks.core.program
 
 import providers.slack.algebra._
 import providers.slack.models._
-import slacks.core.config.SlackChannelReadRepliesConfig
+import slacks.core.config.SlackChannelReadConfig
 
 import akka.actor._
 import akka.http.scaladsl.{Http, HttpExt}
@@ -33,7 +33,7 @@ case class SievedMessages(
 case object GetConversationHistory
 
 class SlackConversationHistoryActor(channelId: ChannelId,
-                                    cfg : SlackChannelReadRepliesConfig[String],
+                                    cfg : SlackChannelReadConfig[String],
                                     token : SlackAccessToken[String],
                                     httpService : HttpService)(implicit aS: ActorSystem, aM: ActorMaterializer) extends Actor with ActorLogging {
   import cats._, data._, implicits._

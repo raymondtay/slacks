@@ -2,7 +2,7 @@ package slacks.core.program
 
 import providers.slack.algebra._
 import providers.slack.models._
-import slacks.core.config.{SlackChannelReadConfig, SlackChannelReadRepliesConfig}
+import slacks.core.config.{SlackChannelReadConfig}
 
 import akka.actor._
 import akka.http.scaladsl.{Http, HttpExt}
@@ -27,6 +27,7 @@ object ChannelConversationInterpreter {
 
   import Channels._
 
+  @deprecated("To be dropped in favour of 'conversation' APIs")
   private def getChannelHistoryFromSlack(channelId: ChannelId, 
                                          cfg: SlackChannelReadConfig[String], 
                                          token: SlackAccessToken[String],
@@ -47,7 +48,7 @@ object ChannelConversationInterpreter {
   }
  
   private def getChannelConversationHistoryFromSlack(channelId: ChannelId, 
-                                                     cfg: SlackChannelReadRepliesConfig[String], 
+                                                     cfg: SlackChannelReadConfig[String], 
                                                      token: SlackAccessToken[String],
                                                      httpService : HttpService)(implicit actorSystem : ActorSystem, actorMat: ActorMaterializer) = {
     import akka.pattern.{ask, pipe}
@@ -75,7 +76,7 @@ object ChannelConversationInterpreter {
     * @param httpService 
     */
   def getChannelConversationHistory(channelId: ChannelId,
-                                    cfg: SlackChannelReadRepliesConfig[String], 
+                                    cfg: SlackChannelReadConfig[String], 
                                     httpService : HttpService)(implicit actorSystem:
                                     ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, SievedMessages] = for {
     token    <- ask[Stack, SlackAccessToken[String]]
@@ -141,7 +142,7 @@ object ChannelConversationInterpreter {
     * @param message a map of (k,v) pairs to be passed for tracing 
     * @param httpService
     */
-  def traceGetChannelConversationHistories(cfg: SlackChannelReadRepliesConfig[String],
+  def traceGetChannelConversationHistories(cfg: SlackChannelReadConfig[String],
                                channelId: String,
                                httpService : HttpService,
                                message : slacks.core.tracer.Message, 
