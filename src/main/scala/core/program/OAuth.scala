@@ -42,7 +42,7 @@ object OAuthInterpreter {
     // this abomination out.
     // Rationale for allowing the sleep to occur is because the ask i.e. ? will
     // occur before the http-request which would return a None.
-    Thread.sleep(2000)
+    Thread.sleep(cfg.timeout * 1000)
     futureDelay[Stack, Option[SlackAccessToken[String]]](Await.result((actor ? GetToken).mapTo[Option[SlackAccessToken[String]]], timeout.duration))
   }
                        
