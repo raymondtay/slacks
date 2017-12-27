@@ -20,5 +20,5 @@ case class User(
   phone : String,
   is_owner : Boolean,
   is_primary_owner : Boolean,
-  image_512 : String
+  image_72 : String
   )
