@@ -80,7 +80,7 @@ object JsonCodec {
         skype       <- Monad[Id].pure(c.downField("profile").getOrElse("skype")(""))
         phone       <- Monad[Id].pure(c.downField("profile").getOrElse("phone")(""))
         image72     <- Monad[Id].pure(c.downField("profile").getOrElse("image_72")(""))
-      } yield User(userId, teamId, name, deleted, firstName, realName, lastName, displayName, email, isBot, updated, statusText, statusEmoji, title, skype, phone, isOwner, isPrimaryOwner, image512)
+      } yield User(userId, teamId, name, deleted, firstName, realName, lastName, displayName, email, isBot, updated, statusText, statusEmoji, title, skype, phone, isOwner, isPrimaryOwner, image72)
   }
   implicit val slackUserEnc : Encoder[User] = deriveEncoder[User]
   implicit val slackUsersDec : Decoder[Users] = deriveDecoder[Users]
