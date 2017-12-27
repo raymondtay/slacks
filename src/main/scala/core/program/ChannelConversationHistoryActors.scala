@@ -226,7 +226,10 @@ class SlackConversationHistoryActor(channelId: ChannelId,
       val cursor : Option[String] =
       possibleDatum.toList.map(datum ⇒
         sieveJsonAndNextCursor.runReader(datum).runList.runWriterNoLog.evalState(localStorage).runOption.run head
-      ).flatten.head
+        ).flatten match {
+          case _cursor :: Nil ⇒ _cursor
+          case _ ⇒ None
+        }
 
       cursor.isDefined && !cursor.get.isEmpty match {
         case false ⇒

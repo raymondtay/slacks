@@ -99,7 +99,10 @@ class SlackUsersActor(cfg : SlackUsersListConfig[String],
       val cursor : Option[String] =
       possibleDatum.toList.map(datum ⇒
         decodeJsonNUpdateState.runReader(datum).runOption.evalState(localStorage).runList.runWriterNoLog.run head
-      ).flatten.head
+        ).flatten match {
+          case _cursor :: Nil ⇒ _cursor
+          case _ ⇒ None
+        }
 
       cursor.isDefined && !cursor.get.isEmpty match {
         case false ⇒
