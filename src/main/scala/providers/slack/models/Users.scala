@@ -12,7 +12,6 @@ case class User(
   display_name : String,
   email : String,
   is_bot : Boolean,
-  updated : Long,
   status_text : String,
   status_emoji : String,
   title : String,
@@ -20,5 +19,8 @@ case class User(
   phone : String,
   is_owner : Boolean,
   is_primary_owner : Boolean,
-  image_72 : String
+  image_72 : String,
+  is_admin : Boolean,
+  bot_id : String,
+  user : String
   )

@@ -63,10 +63,12 @@ object JsonCodec {
       for {
         userId         <- Monad[Id].pure(c.downField("id").as[String])
         teamId         <- Monad[Id].pure(c.downField("team_id").as[String])
+        botId          <- Monad[Id].pure(c.getOrElse("bot_id")(""))
+        user           <- Monad[Id].pure(c.getOrElse("user")(""))
         name           <- Monad[Id].pure(c.downField("name").as[String])
         deleted        <- Monad[Id].pure(c.downField("deleted").as[Boolean])
         isBot          <- Monad[Id].pure(c.downField("is_bot").as[Boolean])
-        updated        <- Monad[Id].pure(c.downField("updated").as[Long])
+        isAdmin        <- Monad[Id].pure(c.getOrElse("is_admin")(false))
         isOwner        <- Monad[Id].pure(c.getOrElse("is_owner")(false))
         isPrimaryOwner <- Monad[Id].pure(c.getOrElse("is_primary_owner")(false))
         email       <- Monad[Id].pure(c.downField("profile").getOrElse("email")(""))
@@ -80,7 +82,7 @@ object JsonCodec {
         skype       <- Monad[Id].pure(c.downField("profile").getOrElse("skype")(""))
         phone       <- Monad[Id].pure(c.downField("profile").getOrElse("phone")(""))
         image72     <- Monad[Id].pure(c.downField("profile").getOrElse("image_72")(""))
-      } yield User(userId, teamId, name, deleted, firstName, realName, lastName, displayName, email, isBot, updated, statusText, statusEmoji, title, skype, phone, isOwner, isPrimaryOwner, image72)
+      } yield User(userId, teamId, name, deleted, firstName, realName, lastName, displayName, email, isBot, statusText, statusEmoji, title, skype, phone, isOwner, isPrimaryOwner, image72, isAdmin, botId, user)
   }
   implicit val slackUserEnc : Encoder[User] = deriveEncoder[User]
   implicit val slackUsersDec : Decoder[Users] = deriveDecoder[Users]
