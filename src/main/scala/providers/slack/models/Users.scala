@@ -23,4 +23,4 @@ case class User(
   is_admin : Boolean,
   bot_id : String,
   user : String
-  )
+  ) extends Serializable
