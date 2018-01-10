@@ -3,17 +3,17 @@ import sbt._
 object Dependencies {
 
   // Versions
-  val catsVersion       = "0.9.0"
+  val catsVersion       = "1.0.1"
   val akkaHttpVersion   = "10.0.10"
   val akkaVersion       = "2.4.19"
   val scalaCheckVersion = "1.13.4"
   val specs2Version     = "4.0.1"
-  val circeVersion      = "0.8.0"
+  val circeVersion      = "0.9.0"
   val scalaLoggerVersion = "3.7.2"
   val logbackClassic     = "1.2.3"
   val fastparseVersion   = "1.0.0"
   val typesafecfgVersion = "1.3.1"
-  val effVersion         = "4.5.0"
+  val effVersion         = "5.0.0-RC1-20180101142835-0e4b73e"
   val jaegerCoreVersion  = "0.22.0-RC2"
   val openTracingVersion = "0.30.0"
 

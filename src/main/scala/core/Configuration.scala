@@ -117,33 +117,33 @@ object ConfigValidator extends ConfigValidator {
   def validateUsersListConfig(config: Config) = 
     (validateUrl(config),
      validateParams(config),
-     validateTimeout(config)).map3((url, params, timeout) ⇒ SlackUsersListConfig(url, params, timeout))
+     validateTimeout(config)).mapN((url, params, timeout) ⇒ SlackUsersListConfig(url, params, timeout))
 
   def validateChannelReadRepliesConfig(config: Config) = 
     (validateUrl(config),
      validateParams(config),
-     validateTimeout(config)).map3((url, params, timeout) ⇒ SlackChannelReadRepliesConfig(url, params, timeout))
+     validateTimeout(config)).mapN((url, params, timeout) ⇒ SlackChannelReadRepliesConfig(url, params, timeout))
 
   def validateChannelReadConfig(config: Config) = 
     (validateUrl(config),
      validateParams(config),
-     validateTimeout(config)).map3((url, params, timeout) ⇒ SlackChannelReadConfig(url, params, timeout))
+     validateTimeout(config)).mapN((url, params, timeout) ⇒ SlackChannelReadConfig(url, params, timeout))
 
   def validateChannelConfig(config : Config) = 
     (validateUrl(config),
      validateParams(config),
-     validateTimeout(config)).map3((url, params, timeout) ⇒ SlackChannelListConfig(url, params, timeout))
+     validateTimeout(config)).mapN((url, params, timeout) ⇒ SlackChannelListConfig(url, params, timeout))
 
   def validateCredentialsConfig(config: Config) = 
     (validateClientId(config),
-     validateClientSK(config)).map2((clientId, clientSecretKey) ⇒ SlackCredentials(clientId,clientSecretKey))
+     validateClientSK(config)).mapN((clientId, clientSecretKey) ⇒ SlackCredentials(clientId,clientSecretKey))
 
   def validateAuthConfig(config : Config) =
     (validateUrl(config), 
-    validateParams(config)).map2((url, params) ⇒ SlackAuthConfig(url,params))
+    validateParams(config)).mapN((url, params) ⇒ SlackAuthConfig(url,params))
 
   def validateAccessConfig(config : Config) =
     (validateUrl(config), 
     validateParams(config),
-    validateTimeout(config)).map3((url, params, timeout) ⇒ SlackAccessConfig(url,params,timeout))
+    validateTimeout(config)).mapN((url, params, timeout) ⇒ SlackAccessConfig(url,params,timeout))
 }
