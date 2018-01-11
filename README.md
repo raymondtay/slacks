@@ -9,9 +9,14 @@ A mini library for Slack
 At the moment, `slacks` uses `cats`, `eff`, `fastparse`, `scalacheck` and
 `specs2` and the author is grateful the contributors of those libraries.
 
-*Note* : Not using the recent version `4.5.0` of `Eff` as its not fully
-compatible with version `1.0.0-RC1` of `Cats`; hence we're sticking to `0.9.0`
-for `Cats`. Stay tuned for updates.
+*Note* : The latest updates to `slacks` is that we are supporting the latest official `Typelevel` releases so that we can progressively push our code forward. See table for latest changes:
+
+Library name | Current version | Comments
+-------------| ----------------|----------
+`Cats`       | 1.0.1           | Upgrade from 0.9.0
+`Eff`        | 5.0.0-RC1-20180101142835-0e4b73e| Bumped from `4.5.0` to support latest `Cats`
+`Circe`      | 0.9.0 | Bumped from `0.8.0` to support latest `Cats`
+
 
 # How to use 
 
