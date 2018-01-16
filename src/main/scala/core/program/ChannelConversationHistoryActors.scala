@@ -250,7 +250,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
         case true ⇒
           log.debug(s"[Get-Conversation-History-Actor][local-storage] bot-messages: ${localStorage.botMessages.size}, user-attachment-messages: ${localStorage.userAttachmentMessages.size}")
           log.info(s"[Get-Conversation-History-Actor] following the cursor :[${cursor.get}] to retrieve more data...")
-          cursorState.updateCursor.run(cursor.get)
+          cursorState.updateCursor.run(cursor.get).value
           httpService.makeSingleRequest.run(continuationUri(cursorState.getCursor)).pipeTo(self)
       }
 
