@@ -14,3 +14,11 @@ trait HttpService {
   def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) : Kleisli[Future,String,HttpResponse]
 }
 
+class RealHttpService extends HttpService {
+  import cats.data.Kleisli, cats.implicits._
+  override def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) = Kleisli{ 
+    (_uri: String) ⇒
+      http.singleRequest(HttpRequest(uri = _uri))
+  }
+}
+

@@ -16,14 +16,6 @@ import akka.util.{ByteString, Timeout}
   * @version 1.0
   */
 
-class RealHttpService extends HttpService {
-  import cats.data.Kleisli, cats.implicits._
-  override def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) = Kleisli{ 
-    (_uri: String) ⇒
-      http.singleRequest(HttpRequest(uri = _uri))
-  }
-}
-
 case object GetToken
 case object StopAction
 class SlackActor(cfg : SlackAccessConfig[String],

@@ -9,7 +9,8 @@ import akka.http.scaladsl.{Http, HttpExt}
 import akka.http.scaladsl.model._
 import akka.stream.{ ActorMaterializer, ActorMaterializerSettings }
 import akka.util.{ByteString, Timeout}
-import scala.concurrent.Future
+import scala.concurrent._
+import scala.concurrent.duration._
 
 /**
   * This processing will be looking for two (i.e. 2) particular things
@@ -60,6 +61,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   private val defaultUri = s"${cfg.url}?channel=${channelId}&token=${token.access_token}&limit=1000"
   private def continuationUri = (cursor:String) ⇒ defaultUri + s"&limit=1000&cursor=${cursor}"
   private var localStorage : SievedMessages = SievedMessages(Nil, Nil, Nil)
+  private val cursorState : Cursor = Cursor("")
 
   override def preStart() = {
     httpService.makeSingleRequest.run(defaultUri).pipeTo(self)
@@ -214,6 +216,14 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   } yield cursor.some
 
   def receive = {
+    /* According to Slack Rate-limiting API, we should throttle our requests
+     * based on the value of the embedded head 'Retry-After'
+     **/
+    case HttpResponse(StatusCodes.TooManyRequests, headers, entity, _) ⇒ 
+      val rateLimit : HttpHeader = headers.filter(header ⇒ header.name() == "Retry-After").head
+      context.system.scheduler.scheduleOnce(Integer.parseInt(rateLimit.value()).seconds)(httpService.makeSingleRequest.run(continuationUri(cursorState.getCursor)).pipeTo(self))
+
+    /* if all goes well, the response would hit here */
     case HttpResponse(StatusCodes.OK, headers, entity, _) ⇒
       log.info("[Get-Conversation-History-Actor] ")
       import JsonCodec._
@@ -221,14 +231,17 @@ class SlackConversationHistoryActor(channelId: ChannelId,
 
       implicit val scheduler = ExecutorServices.schedulerFromGlobalExecutionContext
       val possibleDatum : Throwable Either ByteString =
-        Either.catchNonFatal{Await.result(extractDataFromHttpStream.runReader(entity).runWriterNoLog.run, 2 second)}
+        Either.catchNonFatal{Await.result(extractDataFromHttpStream.runReader(entity).runWriterNoLog.run, 9 second)}
 
       val cursor : Option[String] =
-      possibleDatum.toList.map(datum ⇒
-        sieveJsonAndNextCursor.runReader(datum).runList.runWriterNoLog.evalState(localStorage).runOption.run head
-        ).flatten match {
-          case _cursor :: Nil ⇒ _cursor
-          case _ ⇒ None
+        possibleDatum.toList.map(datum ⇒
+          sieveJsonAndNextCursor.runReader(datum).runList.runWriterNoLog.evalState(localStorage).runOption.run
+        ).sequence match {
+          case Some(xs) ⇒ xs.flatten match {
+            case _cursor :: Nil ⇒ _cursor
+            case _ ⇒ None
+          }
+        case None ⇒ None
         }
 
       cursor.isDefined && !cursor.get.isEmpty match {
@@ -236,8 +249,9 @@ class SlackConversationHistoryActor(channelId: ChannelId,
           log.warning("[Get-Conversation-History-Actor] No more further JSON data detected from Http stream.")
         case true ⇒
           log.debug(s"[Get-Conversation-History-Actor][local-storage] bot-messages: ${localStorage.botMessages.size}, user-attachment-messages: ${localStorage.userAttachmentMessages.size}")
-          log.info(s"[Get-Conversation-History-Actor] following the cursor to retrieve more data...")
-          httpService.makeSingleRequest.run(continuationUri(cursor.get)).pipeTo(self)
+          log.info(s"[Get-Conversation-History-Actor] following the cursor :[${cursor.get}] to retrieve more data...")
+          cursorState.updateCursor.run(cursor.get)
+          httpService.makeSingleRequest.run(continuationUri(cursorState.getCursor)).pipeTo(self)
       }
 
     case resp @ HttpResponse(code, _, _, _) ⇒
