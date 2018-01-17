@@ -50,8 +50,7 @@ case class BotAttachment(
 
 case class Reaction(
   name : String,
-  users: List[String],
-  count : Long
+  users: List[String]
   )
 
 case class Reply(ts: String, user: String) // "ts" - the timestamp in string format, "user" - the slack user id
@@ -66,26 +65,11 @@ case class BotAttachmentMessage(
   reactions: List[Reaction],
   replies: List[Reply])
 
-case class UserAttachment(
-  fallback: String,
-  service_icon : String,
-  from_url : String,
-  text : String, 
-  title_link : String,
-  id : Long,
-  service_name : String,
-  title : String,
-  thumb_url : String,
-  thumb_width : Int,
-  thumb_height : Int
-  )
-
 case class UserAttachmentMessage(
   `type`: String,
   user: String,
-  bot_id: String = "",
   text: String,
-  attachments: List[UserAttachment],
+  attachments: List[io.circe.Json],
   ts: String,
   reactions: List[Reaction],
   replies: List[Reply])
@@ -94,22 +78,27 @@ case class UserFileShareMessage(
   `type`: String,
   subtype: String,
   text : String,
-  id : String,
-  created : Long,
-  timestamp : String, 
-  name : String,
-  title : String,
-  filetype : String,
-  pretty_type : String,
-  user : String,
-  is_external : Boolean,
-  external_type : String,
-  username : String,
-  thumb_1024 : String,
-  permalink : String,
+  file : UserFile,
   comments : List[UserFileComment], 
-  ts : String
-  )
+  user : String,
+  bot_id : String,
+  ts: String
+)
+
+case class UserFile(
+  filetype : String,
+  id : String,
+  title : String,
+  url_private : String,
+  external_type : String,
+  timestamp : Long, 
+  pretty_type : String,
+  name : String,
+  mimetype : String,
+  permalink : String,
+  created : Long,
+  mode : String
+)
 
 case class UserFileComment(
   id : String,

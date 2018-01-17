@@ -66,7 +66,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   override def preStart() = {
     httpService.makeSingleRequest.run(defaultUri).pipeTo(self)
   }
- 
+
   // collect the entire json data prior to processing.
   val extractDataFromHttpStream : Eff[S1, Future[ByteString]] = for {
     entity <- ask[S1, ResponseEntity]
@@ -96,7 +96,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   // Locates all messages sent by regular slack users (i.e. non-bots) 
   val findAllUserAttachmentMessages : Kleisli[List, io.circe.Json, UserAttachmentMessage] = Kleisli{ (json : io.circe.Json) ⇒
     import JsonCodecLens._
-    val userMessagesWithAttachments = 
+    val userMessagesWithAttachments =
       root.messages.each.filter{ (j: io.circe.Json) ⇒
         Applicative[Id].map4(isMessagePresentNMatched(j), isAttachmentsFieldPresent(j), !isBotIdFieldPresent(j), !isSubtypeFieldPresent(j))(_ && _ && _ && _)
       }.obj.getAll(json)
@@ -104,7 +104,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     userMessagesWithAttachments.map{
       message ⇒
         val messageJ : io.circe.Json = Json.fromJsonObject(message)
-        Applicative[Id].map8(getMessageValue(messageJ), getUserIdValue(messageJ), getBotIdValue(messageJ), getTextValue(messageJ), Applicative[Id].pure(extractUserAttachments(message)), getTimestampValue(messageJ), Applicative[Id].pure(extractUserReactions(message)), Applicative[Id].pure(extractUserReplies(message)))(UserAttachmentMessage.apply)
+        Applicative[Id].map7(getMessageValue(messageJ), getUserIdValue(messageJ), getTextValue(messageJ), Applicative[Id].pure(extractUserAttachments(message)), getTimestampValue(messageJ), Applicative[Id].pure(extractUserReactions(message)), Applicative[Id].pure(extractUserReplies(message)))(UserAttachmentMessage.apply)
     }
   }
 
@@ -112,12 +112,12 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   // comments
   def getFileComments(fileId: String) : Kleisli[List, io.circe.Json, UserFileComment] = Kleisli{ (json: io.circe.Json) ⇒
     import JsonCodecLens._
-    val matchedCommentsForFile = 
+    val matchedCommentsForFile =
       root.messages.each.filter{ (j: io.circe.Json) ⇒
         Applicative[Id].map3(isMessagePresentNMatched(j), isSubtypePresentNMatched("file_comment")(j), isFileFieldWithMatchingFileId(fileId)(j))(_ && _ && _)
       }.obj.getAll(json)
 
-    matchedCommentsForFile.map{ 
+    matchedCommentsForFile.map{
       message ⇒
         val messageJ : io.circe.Json = Json.fromJsonObject(message)
         import JsonCodec.slackUserFileCommentDec
@@ -131,19 +131,32 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   // Locate all messages that are shared by regular slack users (i.e. non-bots)
   val findAllSharedFileContentByUsers : Kleisli[List, io.circe.Json, UserFileShareMessage] = Kleisli{ (json: io.circe.Json) ⇒
     import JsonCodecLens._
-    val sharedFileMessages = 
+    val sharedFileMessages =
       root.messages.each.filter{ (j: io.circe.Json) ⇒
         Applicative[Id].map4(isMessagePresentNMatched(j), isSubtypePresentNMatched("file_share")(j), isFileFieldPresent(j), isUsernameFieldPresent(j))(_ && _ && _ && _)
       }.obj.getAll(json)
 
-    sharedFileMessages.map{ 
+    sharedFileMessages.map{
       fileMessage ⇒
         val j : io.circe.Json = Json.fromJsonObject(fileMessage)
-        Applicative[Id].map18(getMessageValue(j), getSubtypeMessageValue(j), getTextValue(j), getFileIdValue(j),
-                              getCreatedValue(j), getTimestampValue(j), getFilenameValue(j), getFileTitleValue(j),
-                              getFileTypeValue(j), getFilePrettyTypeValue(j), getUserIdValue(j), getIsExternalValue(j),
-                              getExternalTypeValue(j), getUsernameValue(j), getThumb1024Value(j), getPermalinkValue(j),
-                              Applicative[Id].pure(getFileComments(getFileIdValue(j))(json)), getTimestampValue(j))(UserFileShareMessage.apply)
+        val userFile : UserFile = Applicative[Id].map12(
+          getFileTypeValue(j),
+          getFileIdValue(j),
+          getFileTitleValue(j),
+          getFileUrlPrivateValue(j),
+          getFileExternalTypeValue(j),
+          getFileTimestampValue(j),
+          getFilePrettyTypeValue(j),
+          getFilenameValue(j),
+          getFileMimeTypeValue(j),
+          getPermalinkValue(j),
+          getFileCreatedValue(j),
+          getFileModeValue(j))(UserFile.apply)
+
+        Applicative[Id].map8(getMessageValue(j), getSubtypeMessageValue(j),
+                             getTextValue(j), userFile,
+                             Applicative[Id].pure(getFileComments(getFileIdValue(j))(json)), getUserIdValue(j),
+                             getBotIdValue(j), getTimestampValue(j))(UserFileShareMessage.apply)
     }
   }
 
@@ -169,12 +182,11 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   }
 
   // Extract the user's "attachments" from the json object
-  val extractUserAttachments : Kleisli[List, io.circe.JsonObject, UserAttachment] = Kleisli{ (o : io.circe.JsonObject) ⇒
-    import JsonCodec.slackUserAttachmentDec
+  val extractUserAttachments : Kleisli[List, io.circe.JsonObject, io.circe.Json] = Kleisli{ (o : io.circe.JsonObject) ⇒
     val json : io.circe.Json = Json.fromJsonObject(o)
     root.attachments.arr.getOption(json) match {
-      case Some(xs : Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[UserAttachment].getOrElse(UserAttachment("","","","","",0L,"","","",0,0))).toList
-      case None ⇒ List.empty[UserAttachment]
+      case Some(xs : Vector[io.circe.Json]) ⇒ xs.toList
+      case None ⇒ List.empty[io.circe.Json]
     }
   }
 
@@ -183,7 +195,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     import JsonCodec.slackReactionDec
     val json : io.circe.Json = Json.fromJsonObject(o)
     root.reactions.arr.getOption(json) match {
-      case Some(xs:Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[Reaction].getOrElse(Reaction("",Nil,0L))).toList
+      case Some(xs:Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[Reaction].getOrElse(Reaction("",Nil))).toList
       case None ⇒ List.empty[Reaction]
     }
   }
