@@ -1,4 +1,4 @@
 package slacks.core.models
 
-trait Model[A]
+trait Model[A] extends Serializable
 

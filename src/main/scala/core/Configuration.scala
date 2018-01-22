@@ -107,7 +107,7 @@ sealed trait ConfigValidator {
 case class SlackCredentials(clientId: String, clientSecretKey: String)
 case class SlackUsersListConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackChannelListConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
-case class SlackChannelReadConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
+case class SlackChannelReadConfig[A](url : String, params : List[ParamType[A]], timeout : Long) extends Serializable
 case class SlackChannelReadRepliesConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackAuthConfig[A](url : String, params : List[ParamType[A]])
 case class SlackAccessConfig[A](url : String, params : List[ParamType[A]], timeout : Long)

@@ -29,7 +29,7 @@ case class SievedMessages(
   botMessages : List[BotAttachmentMessage],
   userAttachmentMessages: List[UserAttachmentMessage],
   userFileShareMessages : List[UserFileShareMessage]
-)
+) extends Serializable
 
 case object GetConversationHistory
 

@@ -46,14 +46,14 @@ case class BotAttachment(
   id : Long,
   color : String,
   mrkdwn_in : List[String]
-  )
+  ) extends Serializable
 
 case class Reaction(
   name : String,
   users: List[String]
-  )
+  ) extends Serializable
 
-case class Reply(ts: String, user: String) // "ts" - the timestamp in string format, "user" - the slack user id
+case class Reply(ts: String, user: String) extends Serializable // "ts" - the timestamp in string format, "user" - the slack user id
 
 case class BotAttachmentMessage(
   `type`: String,
@@ -63,7 +63,7 @@ case class BotAttachmentMessage(
   attachments: List[BotAttachment],
   ts: String,
   reactions: List[Reaction],
-  replies: List[Reply])
+  replies: List[Reply]) extends Serializable
 
 case class UserAttachmentMessage(
   `type`: String,
@@ -72,7 +72,7 @@ case class UserAttachmentMessage(
   attachments: List[io.circe.Json],
   ts: String,
   reactions: List[Reaction],
-  replies: List[Reply])
+  replies: List[Reply]) extends Serializable
 
 case class UserFileShareMessage(
   `type`: String,
@@ -83,7 +83,7 @@ case class UserFileShareMessage(
   user : String,
   bot_id : String,
   ts: String
-)
+) extends Serializable
 
 case class UserFile(
   filetype : String,
@@ -98,10 +98,10 @@ case class UserFile(
   permalink : String,
   created : Long,
   mode : String
-)
+) extends Serializable
 
 case class UserFileComment(
   id : String,
   timestamp : Long,
   user : String
-  )
+) extends Serializable
