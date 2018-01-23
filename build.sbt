@@ -10,7 +10,6 @@ val commonSettings = Seq(
 )
 
 val codeCoverageSettings = Seq(
- coverageEnabled := true,
  coverageExcludedPackages := "",
  coverageMinimum := 80,
  coverageFailOnMinimum := true
