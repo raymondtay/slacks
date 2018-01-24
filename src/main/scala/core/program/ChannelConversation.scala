@@ -1,7 +1,10 @@
 package slacks.core.program 
 
+import scala.language.postfixOps
+
 import providers.slack.algebra._
 import providers.slack.models._
+import slacks.core.program.supervisor.SupervisorRestartN
 import slacks.core.config.{SlackChannelReadConfig}
 
 import akka.actor._
@@ -27,7 +30,7 @@ object ChannelConversationInterpreter {
 
   import Channels._
 
-  @deprecated("To be dropped in favour of 'conversation' APIs")
+  @deprecated(message = "To be dropped in favour of 'conversation' APIs", since = "0.1-SNAPSHOT")
   private def getChannelHistoryFromSlack(channelId: ChannelId, 
                                          cfg: SlackChannelReadConfig[String], 
                                          token: SlackAccessToken[String],
@@ -37,8 +40,10 @@ object ChannelConversationInterpreter {
     import scala.concurrent.duration._
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val actor = actorSystem.actorOf(Props(new SlackChannelHistoryActor(channelId, cfg, token, httpService)))
-    implicit val timeout = Timeout(cfg.timeout seconds)
+    val supervisor = actorSystem.actorOf(Props[SupervisorRestartN], s"supervisorRestartN_${java.util.UUID.randomUUID.toString}")
+    implicit val createActorTimeout = Timeout(200 milliseconds)
+    val actor = Await.result((supervisor ? Props(new SlackChannelHistoryActor(channelId, cfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
+    val timeout = Timeout(cfg.timeout seconds)
     // TODO: Once Eff-Monad upgrades to allow waitFor, retryUntil, we will take
     // this abomination out.
     // Rationale for allowing the sleep to occur is because the ask i.e. ? will
@@ -56,8 +61,10 @@ object ChannelConversationInterpreter {
     import scala.concurrent.duration._
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val actor = actorSystem.actorOf(Props(new SlackConversationHistoryActor(channelId, cfg, token, httpService)))
-    implicit val timeout = Timeout(cfg.timeout seconds)
+    val supervisor = actorSystem.actorOf(Props[SupervisorRestartN], s"supervisorRestartN_${java.util.UUID.randomUUID.toString}")
+    implicit val createActorTimeout = Timeout(200 milliseconds)
+    val actor = Await.result((supervisor ? Props(new SlackConversationHistoryActor(channelId, cfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
+    val timeout = Timeout(cfg.timeout seconds)
     // TODO: Once Eff-Monad upgrades to allow waitFor, retryUntil, we will take
     // this abomination out.
     // Rationale for allowing the sleep to occur is because the ask i.e. ? will
@@ -94,7 +101,7 @@ object ChannelConversationInterpreter {
     * @param token slack token
     * @param httpService 
     */
-  @deprecated("To be dropped in favour of 'conversation' APIs")
+  @deprecated(message = "To be dropped in favour of 'conversation' APIs", since = "0.1-SNAPSHOT")
   def getChannelHistory(channelId: ChannelId,
                         cfg: SlackChannelReadConfig[String], 
                         httpService : HttpService)(implicit actorSystem:

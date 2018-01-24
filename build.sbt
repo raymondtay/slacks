@@ -6,7 +6,7 @@ val commonSettings = Seq(
   description := "Simple library for Slack APIs",
   version := "0.1-SNAPSHOT",
   scalaVersion := "2.11.11",
-  scalacOptions ++= Seq("-Yrangepos", "-Ypartial-unification")
+  scalacOptions ++= Seq("-deprecation", "-feature", "-Yrangepos", "-Ypartial-unification")
 )
 
 val codeCoverageSettings = Seq(

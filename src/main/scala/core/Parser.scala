@@ -1,5 +1,6 @@
 package slacks.core.parser
 
+import scala.language.higherKinds
 import cats._, data._, implicits._
 import fastparse.all._
 import org.slf4j.{Logger, LoggerFactory}

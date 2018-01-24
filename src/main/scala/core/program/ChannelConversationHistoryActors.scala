@@ -1,5 +1,7 @@
 package slacks.core.program
 
+import scala.language.postfixOps
+
 import providers.slack.algebra._
 import providers.slack.models._
 import slacks.core.config.SlackChannelReadConfig

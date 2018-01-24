@@ -6,7 +6,10 @@ package slacks.core.program
   * @version 1.0
   */
 
+import scala.language.postfixOps
+
 import providers.slack.algebra._
+import slacks.core.program.supervisor.SupervisorRestartN
 import slacks.core.config.SlackUsersListConfig
 
 import akka.actor._
@@ -49,8 +52,10 @@ object UsersInterpreter {
     import scala.concurrent.duration._
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val actor = actorSystem.actorOf(Props(new SlackUsersActor(cfg, token, httpService)))
-    implicit val timeout = Timeout(cfg.timeout seconds)
+    val supervisor = actorSystem.actorOf(Props[SupervisorRestartN], s"supervisorRestartN_${java.util.UUID.randomUUID.toString}")
+    implicit val createActorTimeout = Timeout(200 milliseconds)
+    val actor = Await.result((supervisor ? Props(new SlackUsersActor(cfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
+    val timeout = Timeout(cfg.timeout seconds)
     Thread.sleep(cfg.timeout * 1000)
     futureDelay[GetUsersStack, UserList](Await.result((actor ? GetUsers).mapTo[UserList], timeout.duration))
   }

@@ -16,6 +16,7 @@ object Dependencies {
   val effVersion         = "5.0.0-RC1-20180101142835-0e4b73e"
   val jaegerCoreVersion  = "0.22.0-RC2"
   val openTracingVersion = "0.30.0"
+  val scalatestVersion   = "3.0.4"
 
   // Libraries
   val cats           = "org.typelevel" %% "cats-core" % catsVersion
@@ -43,10 +44,12 @@ object Dependencies {
   val fastparse = "com.lihaoyi" %% "fastparse" % fastparseVersion
   val typesafecfg =  "com.typesafe" % "config" % typesafecfgVersion
   val eff = "org.atnos" %% "eff" % effVersion
-  
+ 
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.0.4"
+
   // Grouping the libraries to logical units
   val generalLibs = Seq(cats, akkaHttp, akkaStream, akkaActors, fastparse, eff) ++ logger ++ circeJson ++ openTracing
 
-  val testLibs = Seq(akkaHttpTest, specs2ScalaCheckTest, specs2Test).map( _ % Test )
+  val testLibs = Seq(akkaHttpTest, specs2ScalaCheckTest, specs2Test, scalaTest).map( _ % Test )
 
 }

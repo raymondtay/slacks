@@ -6,7 +6,10 @@ package slacks.core.program
   * @version 1.0
   */
 
+import scala.language.postfixOps
+
 import providers.slack.algebra._
+import slacks.core.program.supervisor.SupervisorRestartN
 import slacks.core.config.SlackAccessConfig
 
 import akka.actor._
@@ -36,8 +39,10 @@ object OAuthInterpreter {
     import scala.concurrent.duration._
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val actor = actorSystem.actorOf(Props(new SlackActor(cfg, code, credential, httpService)), "slack-actor")
-    implicit val timeout = Timeout(cfg.timeout seconds)
+    val supervisor = actorSystem.actorOf(Props[SupervisorRestartN], s"supervisorRestartN_${java.util.UUID.randomUUID.toString}")
+    implicit val createActorTimeout = Timeout(200 milliseconds)
+    val actor = Await.result((supervisor ? Props(new SlackActor(cfg, code, credential, httpService))).mapTo[ActorRef], createActorTimeout.duration)
+    val timeout = Timeout(cfg.timeout seconds)
     // TODO: Once Eff-Monad upgrades to allow waitFor, retryUntil, we will take
     // this abomination out.
     // Rationale for allowing the sleep to occur is because the ask i.e. ? will

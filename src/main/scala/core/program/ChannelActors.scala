@@ -10,6 +10,8 @@ import akka.http.scaladsl.model._
 import akka.stream.{ ActorMaterializer, ActorMaterializerSettings }
 import akka.util.{ByteString, Timeout}
 
+import scala.language.postfixOps
+
 /**
   * This is the Actor for the Slack Channel Algebra
   * 
