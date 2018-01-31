@@ -21,7 +21,7 @@ import cats._, implicits._
 import akka.actor._
 import akka.stream._
 
-class OAuthSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck with Specs2RouteTest { override def is = s2"""
+class OAuthSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck with Specs2RouteTest { override def is = sequential ^ s2"""
 
   The oauth stack can be used to
     return the client secret key    $getSecretKey

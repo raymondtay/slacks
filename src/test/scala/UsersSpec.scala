@@ -22,7 +22,7 @@ import akka.actor._
 import akka.stream._
 import providers.slack.models._
 
-class UsersSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck with Specs2RouteTest { override def is = s2"""
+class UsersSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck with Specs2RouteTest { override def is = sequential ^ s2"""
 
   OpenTracing Disabled
   --------------------------------------------------------------
