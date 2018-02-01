@@ -15,6 +15,8 @@ val codeCoverageSettings = Seq(
  coverageFailOnMinimum := true
 )
 
+coverageExcludedPackages := "slacks\\.core\\.program\\.RealHttpService"
+
 lazy val slacks = (project in file("."))
   .settings(
     commonSettings ++ codeCoverageSettings,
