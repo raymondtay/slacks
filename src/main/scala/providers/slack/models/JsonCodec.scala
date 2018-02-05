@@ -72,6 +72,9 @@ object JsonCodec {
   implicit val slackUserFileCommentEnc : Encoder[UserFileComment] = deriveEncoder[UserFileComment]
   implicit val slackMessages : Decoder[SlackMessage] = deriveDecoder[SlackMessage]
 
+  implicit val slackTeamDec : Decoder[Team] = deriveDecoder[Team]
+  implicit val slackEmojiDec : Decoder[Emoji] = deriveDecoder[Emoji]
+
   /* This pattern is useful when merging different jsons into a model where you need
    * something from `a` which cannot be found in `b` but neither `a` or `b` can
    * fullfill those requirements
