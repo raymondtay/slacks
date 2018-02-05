@@ -2,6 +2,7 @@ package providers.slack.models
 
 
 object JsonCodec {
+  import scala.util._
   import io.circe._, io.circe.generic.semiauto._
   import cats._, implicits._
 
@@ -71,4 +72,21 @@ object JsonCodec {
   implicit val slackUserFileCommentEnc : Encoder[UserFileComment] = deriveEncoder[UserFileComment]
   implicit val slackMessages : Decoder[SlackMessage] = deriveDecoder[SlackMessage]
 
+  /* This pattern is useful when merging different jsons into a model where you need
+   * something from `a` which cannot be found in `b` but neither `a` or `b` can
+   * fullfill those requirements
+   **/
+  def extractNMerge : io.circe.Json => (io.circe.Json => Either[io.circe.DecodingFailure,providers.slack.models.Team]) =
+    (team: io.circe.Json) ⇒ (emoji: io.circe.Json) ⇒ {
+      val teamH = team.hcursor
+      val emojiH = emoji.hcursor
+      for {
+        name         <- teamH.downField("team").downField("name").as[String]
+        domain       <- teamH.downField("team").downField("domain").as[String]
+        email_domain <- teamH.downField("team").downField("email_domain").as[String]
+        image_132    <- teamH.downField("team").downField("icon").downField("image_132").as[String]
+        emojis       <- emojiH.downField("emoji").as[Map[String,String]]
+      } yield Team(name, domain, email_domain, image_132, emojis = emojis.toList.map(p ⇒ Emoji(p._1, p._2)))
+  }
 }
+

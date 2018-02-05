@@ -18,6 +18,7 @@ package object algebra {
   type SlackCode = String // temporary code token from Slack
   type SlackCredentials = (ClientId, Option[ClientSecretKey])
   type ChannelId = String
+  type TeamId = String
 
   /* Asking the context for the 2-tuple of client-id and some secret key if
    * present */

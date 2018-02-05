@@ -13,6 +13,91 @@ import akka.util.{ByteString, Timeout}
 // Service stubs for testing purposes
 //
 
+class FakeTeamInfoHttpServiceReturnsInvalidJson extends HttpService {
+  import cats.data.Kleisli, cats.implicits._
+  import ContentTypes._
+  import scala.concurrent.Future
+  var state = 0
+  override def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) = Kleisli{ 
+    (_uri: String) ⇒ 
+      state += 1 /* kind of a hack, but ignoring for now.*/
+
+      //missing fields in the json
+      val jsonData =
+      if (state == 1) """
+        {
+          "ok": true,
+          "team": {
+              "id": "T12345",
+              "email_domain": "example.com",
+              "icon": {
+                  "image_34": "https:\/\/...",
+                  "image_44": "https:\/\/...",
+                  "image_68": "https:\/\/...",
+                  "image_88": "https:\/\/...",
+                  "image_102": "https:\/\/...",
+                  "image_132": "https:\/\/...",
+                  "image_default": true
+              },
+             "enterprise_id": "E1234A12AB",
+             "enterprise_name": "Umbrella Corporation"
+          }
+        }"""
+      else """
+        { "ok": false,
+          "error" : "something awful went down."
+        }"""
+ 
+    Future.successful(
+      HttpResponse(entity = HttpEntity(`application/json`, jsonData))
+    )
+  }
+}
+
+class FakeTeamInfoHttpService extends HttpService {
+  import cats.data.Kleisli, cats.implicits._
+  import ContentTypes._
+  import scala.concurrent.Future
+  var state = 0
+  override def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) = Kleisli{ 
+    (_uri: String) ⇒ 
+      state += 1 /* kind of a hack, but ignoring for now.*/
+      val jsonData =
+      if (state == 1) """
+        {
+          "ok": true,
+          "team": {
+              "id": "T12345",
+              "name": "My Team",
+              "domain": "example",
+              "email_domain": "example.com",
+              "icon": {
+                  "image_34": "https:\/\/...",
+                  "image_44": "https:\/\/...",
+                  "image_68": "https:\/\/...",
+                  "image_88": "https:\/\/...",
+                  "image_102": "https:\/\/...",
+                  "image_132": "https:\/\/...",
+                  "image_default": true
+              },
+             "enterprise_id": "E1234A12AB",
+             "enterprise_name": "Umbrella Corporation"
+          }
+        }"""
+      else """
+        { "ok": true,
+          "emoji": {
+            "bowtie": "https:\/\/my.slack.com\/emoji\/bowtie\/46ec6f2bb0.png",
+            "squirrel": "https:\/\/my.slack.com\/emoji\/squirrel\/f35f40c0e0.png",
+            "shipit": "alias:squirrel"}
+        }"""
+ 
+    Future.successful(
+      HttpResponse(entity = HttpEntity(`application/json`, jsonData))
+    )
+  }
+}
+
 class FakeChannelListingHttpService extends HttpService {
   import cats.data.Kleisli, cats.implicits._
   import ContentTypes._

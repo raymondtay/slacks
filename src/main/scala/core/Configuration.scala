@@ -24,6 +24,10 @@ object Config {
   val channelReadRepliesConfig : NonEmptyList[ConfigValidation] Either SlackChannelReadRepliesConfig[String] = ConfigValidator.validateChannelReadRepliesConfig(config.getConfig("slacks.api.conversation.read.replies")).toEither
 
   val usersListConfig : NonEmptyList[ConfigValidation] Either SlackUsersListConfig[String] = ConfigValidator.validateUsersListConfig(config.getConfig("slacks.api.users.list")).toEither
+
+  val teamInfoConfig : NonEmptyList[ConfigValidation] Either SlackTeamInfoConfig[String] = ConfigValidator.validateTeamInfoConfig(config.getConfig("slacks.api.team.info")).toEither
+
+  val emojiListConfig : NonEmptyList[ConfigValidation] Either SlackEmojiListConfig[String] = ConfigValidator.validateEmojiListConfig(config.getConfig("slacks.api.emoji.list")).toEither
 }
 
 sealed trait ConfigValidation {
@@ -111,6 +115,8 @@ case class SlackChannelReadConfig[A](url : String, params : List[ParamType[A]], 
 case class SlackChannelReadRepliesConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackAuthConfig[A](url : String, params : List[ParamType[A]])
 case class SlackAccessConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
+case class SlackTeamInfoConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
+case class SlackEmojiListConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 
 object ConfigValidator extends ConfigValidator {
 
@@ -146,4 +152,15 @@ object ConfigValidator extends ConfigValidator {
     (validateUrl(config), 
     validateParams(config),
     validateTimeout(config)).mapN((url, params, timeout) ⇒ SlackAccessConfig(url,params,timeout))
+
+  def validateTeamInfoConfig(config: Config) = 
+    (validateUrl(config),
+     validateParams(config),
+     validateTimeout(config)).mapN((url, params, timeout) ⇒ SlackTeamInfoConfig(url, params, timeout))
+
+  def validateEmojiListConfig(config: Config) = 
+    (validateUrl(config),
+     validateParams(config),
+     validateTimeout(config)).mapN((url, params, timeout) ⇒ SlackEmojiListConfig(url, params, timeout))
+
 }
