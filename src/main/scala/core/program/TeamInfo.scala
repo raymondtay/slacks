@@ -48,7 +48,7 @@ object TeamInfoInterpreter {
     // Rationale for allowing the sleep to occur is because the ask i.e. ? will
     // occur before the http-request which would return a None.
     Thread.sleep(cfg.timeout * 1000)
-    futureDelay[Stack, io.circe.Json](Await.result((actor ? GetTeamInfo).mapTo[io.circe.Json], timeout.duration))
+    futureDelay[Stack, (TeamId, io.circe.Json)](Await.result((actor ? GetTeamInfo).mapTo[(TeamId, io.circe.Json)], timeout.duration))
   }
 
   private def getTeamEmojiFromSlack(cfg: SlackEmojiListConfig[String],
@@ -87,13 +87,13 @@ object TeamInfoInterpreter {
   def getTeamInfo(slackTeamInfoCfg: SlackTeamInfoConfig[String],
                   slackEmojiListCfg : SlackEmojiListConfig[String],
                   httpService : HttpService)(implicit actorSystem:
-                  ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, Either[io.circe.DecodingFailure, Team]] = for {
+                  ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, (TeamId, Either[io.circe.DecodingFailure, Team])] = for {
     token  <- ask[Stack, SlackAccessToken[String]]
     _      <- tell[Stack, String]("[Get-TeamInfo] Slack access token retrieved.")
     team   <- getTeamInfoFromSlack(slackTeamInfoCfg, token, httpService)
     _      <- tell[Stack, String]("[Get-TeamInfo] Slack team info retrieved.")
     emojis <- getTeamEmojiFromSlack(slackEmojiListCfg, token, httpService)
     _      <- tell[Stack, String]("[Get-TeamEmoji] Slack team emojis retrieved.")
-  } yield JsonCodec.extractNMerge(team)(emojis)
+  } yield (team._1, JsonCodec.extractNMerge(team._2)(emojis))
 
 }

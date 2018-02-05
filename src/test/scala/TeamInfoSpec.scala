@@ -19,6 +19,7 @@ import org.atnos.eff.syntax.future._
 import cats._, implicits._
 import akka.actor._
 import akka.stream._
+import providers.slack.algebra.TeamId
 import providers.slack.models._
 
 class TeamInfoSpec(implicit ee: ExecutionEnv) extends Specification with Specs2RouteTest { override def is = sequential ^ s2"""
@@ -44,11 +45,12 @@ class TeamInfoSpec(implicit ee: ExecutionEnv) extends Specification with Specs2R
             getTeamInfo(teamInfoCfg, emojiListCfg, new FakeTeamInfoHttpService).
               runReader(SlackAccessToken("fake-slack-access-token", "users:list" :: Nil)).runWriter.runSequential, 5 second)
 
-        teamModel must beRight((e:Team) ⇒ e.name.size must not be_==(0))
-        teamModel must beRight((e:Team) ⇒ e.domain.size must not be_==(0))
-        teamModel must beRight((e:Team) ⇒ e.email_domain.size must not be_==(0))
-        teamModel must beRight((e:Team) ⇒ e.image_132.size must not be_==(0))
-        teamModel must beRight((e:Team) ⇒ e.emojis.size must not be_==(0))
+        teamModel._1 must not be empty
+        teamModel._2 must beRight((e: Team) ⇒ e.name.size must not be_==(0))
+        teamModel._2 must beRight((e: Team) ⇒ e.domain.size must not be_==(0))
+        teamModel._2 must beRight((e: Team) ⇒ e.email_domain.size must not be_==(0))
+        teamModel._2 must beRight((e: Team) ⇒ e.image_132.size must not be_==(0))
+        teamModel._2 must beRight((e: Team) ⇒ e.emojis.size must not be_==(0))
     }
   }
 
@@ -67,7 +69,8 @@ class TeamInfoSpec(implicit ee: ExecutionEnv) extends Specification with Specs2R
             getTeamInfo(teamInfoCfg, emojiListCfg, new FakeTeamInfoHttpServiceReturnsInvalidJson).
               runReader(SlackAccessToken("fake-slack-access-token", "users:list" :: Nil)).runWriter.runSequential, 5 second)
 
-        teamModel must beLeft
+        teamModel._1 must not be empty
+        teamModel._2 must beLeft
     }
   }
 

@@ -45,13 +45,13 @@ class SlackTeamInfoActor(teamInfoCfg : SlackTeamInfoConfig[String],
 
   implicit val http = Http(context.system)
   private val defaultUri = s"${teamInfoCfg.url}?token=${token.access_token}"
-  private var localStorage : io.circe.Json = io.circe.Json.Null
+  private var localStorage : (TeamId, io.circe.Json) = ("", io.circe.Json.Null)
 
   type ParseJson[A] = io.circe.ParsingFailure Either A
   type ReaderResponseEntity[A] = Reader[ResponseEntity, A]
   type ReaderBytes[A] = Reader[ByteString, A]
   type WriteLog[A] = Writer[String, A]
-  type Store[A] = State[io.circe.Json,A]
+  type Store[A] = State[(TeamId, io.circe.Json),A]
   type S1 = Fx.fx2[WriteLog, ReaderResponseEntity]
   type S2 = Fx.fx4[Store, ParseJson, ReaderBytes, WriteLog]
 
@@ -62,13 +62,14 @@ class SlackTeamInfoActor(teamInfoCfg : SlackTeamInfoConfig[String],
 
   val decodeAsJson : Eff[S2, io.circe.Json] = {
     import io.circe.parser._
+    import JsonCodecLens.getTeamIdValue
     for {
       datum <- ask[S2, ByteString]
        _    <- tell[S2,String]("[Get-Team-Info-Actor] Collected the json string from ctx.")
       json  <- fromEither[S2, io.circe.ParsingFailure, io.circe.Json](parse(datum.utf8String))
        _    <- tell[S2,String]("[Get-Team-Info-Actor] Collected the decoded json string.")
-       _    <- put[S2, io.circe.Json](json)
-       _    <- modify[S2,io.circe.Json]((s:io.circe.Json) ⇒ {localStorage = s; localStorage})
+       _    <- put[S2, (TeamId, io.circe.Json)]((getTeamIdValue(json), json))
+       _    <- modify[S2,(TeamId, io.circe.Json)]((s:(TeamId, io.circe.Json)) ⇒ {localStorage = s; localStorage})
      } yield json
 
   }
