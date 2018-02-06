@@ -28,7 +28,27 @@ class TeamInfoSpec(implicit ee: ExecutionEnv) extends Specification with Specs2R
   --------------------------------------------------------------
   The union of team.info and emoji.list jsons should produce a valid 'Team' model when both remote data retrievals are OK... $verifyMergeOfJsonsWhenOK
   The union of team.info and emoji.list jsons should produce a valid 'Team' model when both remote data retrievals are NOT OK... $verifyMergeOfJsonsWhenNOK
+  The team's identifier should be retrieveable $verifyTeamIdRetrieved
   """
+
+  def verifyTeamIdRetrieved = {
+    import JsonCodec.extractNMerge 
+    import scala.concurrent._, duration._
+
+    import TeamInfoInterpreter._
+
+    implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
+    import slacks.core.config.Config
+    Config.teamInfoConfig match { // this tests the configuration loaded in application.conf
+      case Right(teamInfoCfg) ⇒
+        val (teamId, logInfo) =
+          Await.result(
+            getTeam(teamInfoCfg, new FakeTeamHttpService).
+              runReader(SlackAccessToken("fake-slack-access-token", "users:list" :: Nil)).runWriter.runSequential, 5 second)
+
+        teamId must not be empty
+    }
+  }
 
   def verifyMergeOfJsonsWhenOK = {
     import JsonCodec.extractNMerge 

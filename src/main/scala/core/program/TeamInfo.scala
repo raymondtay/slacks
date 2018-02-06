@@ -72,17 +72,18 @@ object TeamInfoInterpreter {
     futureDelay[Stack, io.circe.Json](Await.result((actor ? GetTeamEmoji).mapTo[io.circe.Json], timeout.duration))
   }
 
-  /** 
+  /**
     * Obtain the team info from Slack based on the token, this process ha no
     * pagination as compared to other APIs for the simple reason that Slack's
     * API does not have one either.
     *
     * Caveat: the team's identifier (i.e. team id) is implicit as its retained
     * by slack and implied by the slack token.
-    * 
-    * @param cfg configuration
+    *
+    * @param teamInfocfg configuration to locate slack's team api
+    * @param emojiListcfg configuration to locate to slack's emoji api
     * @param token slack token
-    * @param httpService 
+    * @param httpService
     */
   def getTeamInfo(slackTeamInfoCfg: SlackTeamInfoConfig[String],
                   slackEmojiListCfg : SlackEmojiListConfig[String],
@@ -95,5 +96,26 @@ object TeamInfoInterpreter {
     emojis <- getTeamEmojiFromSlack(slackEmojiListCfg, token, httpService)
     _      <- tell[Stack, String]("[Get-TeamEmoji] Slack team emojis retrieved.")
   } yield (team._1, JsonCodec.extractNMerge(team._2)(emojis))
+
+  /**
+    * Obtain the team's id from Slack based on the token, this process ha no
+    * pagination as compared to other APIs for the simple reason that Slack's
+    * API does not have one either.
+    *
+    * Caveat: the team's identifier (i.e. team id) is implicit as its retained
+    * by slack and implied by the slack token.
+    *
+    * @param teamInfocfg configuration to locate slack's team api
+    * @param token slack token
+    * @param httpService
+    */
+  def getTeam(slackTeamInfoCfg: SlackTeamInfoConfig[String],
+              httpService : HttpService)(implicit actorSystem:
+              ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, TeamId] = for {
+    token  <- ask[Stack, SlackAccessToken[String]]
+    _      <- tell[Stack, String]("[Get-Team] Slack access token retrieved.")
+    team   <- getTeamInfoFromSlack(slackTeamInfoCfg, token, httpService)
+    _      <- tell[Stack, String]("[Get-Team] Slack team retrieved.")
+  } yield team._1
 
 }

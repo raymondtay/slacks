@@ -54,6 +54,41 @@ class FakeTeamInfoHttpServiceReturnsInvalidJson extends HttpService {
   }
 }
 
+class FakeTeamHttpService extends HttpService {
+  import cats.data.Kleisli, cats.implicits._
+  import ContentTypes._
+  import scala.concurrent.Future
+  override def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) = Kleisli{ 
+    (_uri: String) ⇒ 
+      val jsonData =
+        """
+        {
+          "ok": true,
+          "team": {
+              "id": "T12345",
+              "name": "My Team",
+              "domain": "example",
+              "email_domain": "example.com",
+              "icon": {
+                  "image_34": "https:\/\/...",
+                  "image_44": "https:\/\/...",
+                  "image_68": "https:\/\/...",
+                  "image_88": "https:\/\/...",
+                  "image_102": "https:\/\/...",
+                  "image_132": "https:\/\/...",
+                  "image_default": true
+              },
+             "enterprise_id": "E1234A12AB",
+             "enterprise_name": "Umbrella Corporation"
+          }
+        }"""
+ 
+    Future.successful(
+      HttpResponse(entity = HttpEntity(`application/json`, jsonData))
+    )
+  }
+}
+
 class FakeTeamInfoHttpService extends HttpService {
   import cats.data.Kleisli, cats.implicits._
   import ContentTypes._
