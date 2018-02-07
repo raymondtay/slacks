@@ -20,6 +20,7 @@ import cats._, implicits._
 import akka.actor._
 import akka.stream._
 import providers.slack.algebra.TeamId
+import slacks.core.models.Token
 import providers.slack.models._
 
 class TeamInfoSpec(implicit ee: ExecutionEnv) extends Specification with Specs2RouteTest { override def is = sequential ^ s2"""
@@ -44,7 +45,7 @@ class TeamInfoSpec(implicit ee: ExecutionEnv) extends Specification with Specs2R
         val (teamId, logInfo) =
           Await.result(
             getTeam(teamInfoCfg, new FakeTeamHttpService).
-              runReader(SlackAccessToken("fake-slack-access-token", "users:list" :: Nil)).runWriter.runSequential, 5 second)
+              runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "users:list" :: Nil)).runWriter.runSequential, 5 second)
 
         teamId must not be empty
     }
@@ -63,7 +64,7 @@ class TeamInfoSpec(implicit ee: ExecutionEnv) extends Specification with Specs2R
         val (teamModel, logInfo) =
           Await.result(
             getTeamInfo(teamInfoCfg, emojiListCfg, new FakeTeamInfoHttpService).
-              runReader(SlackAccessToken("fake-slack-access-token", "users:list" :: Nil)).runWriter.runSequential, 5 second)
+              runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "users:list" :: Nil)).runWriter.runSequential, 5 second)
 
         teamModel._1 must not be empty
         teamModel._2 must beRight((e: Team) ⇒ e.name.size must not be_==(0))
@@ -87,7 +88,7 @@ class TeamInfoSpec(implicit ee: ExecutionEnv) extends Specification with Specs2R
         val (teamModel, logInfo) =
           Await.result(
             getTeamInfo(teamInfoCfg, emojiListCfg, new FakeTeamInfoHttpServiceReturnsInvalidJson).
-              runReader(SlackAccessToken("fake-slack-access-token", "users:list" :: Nil)).runWriter.runSequential, 5 second)
+              runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "users:list" :: Nil)).runWriter.runSequential, 5 second)
 
         teamModel._1 must not be empty
         teamModel._2 must beLeft

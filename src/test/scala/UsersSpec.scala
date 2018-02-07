@@ -20,6 +20,7 @@ import org.atnos.eff.syntax.future._
 import cats._, implicits._
 import akka.actor._
 import akka.stream._
+import slacks.core.models.Token
 import providers.slack.models._
 
 class UsersSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck with Specs2RouteTest { override def is = sequential ^ s2"""
@@ -50,7 +51,7 @@ class UsersSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck
           val (retrievedUsers, logInfo) =
             Await.result(
               getAllUsers(cfg, new FakeGetAllUsersHttpService).
-                runReader(SlackAccessToken("fake-slack-access-token", "users:list" :: Nil)).  runWriter.runSequential, 9 second)
+                runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "users:list" :: Nil)).  runWriter.runSequential, 9 second)
           retrievedUsers.users.size == 20
         case Left(_)  ⇒ false
       }

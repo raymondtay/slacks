@@ -747,7 +747,7 @@ class FakeOAuthHttpService extends HttpService {
   import scala.concurrent.Future
   override def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) = Kleisli{ 
     (_uri: String) ⇒ 
-      val token = SlackAccessToken("test-token", "read" :: Nil)
+      val token = SlackAccessToken(slacks.core.models.Token("xoxp-","test-token"), "read" :: Nil)
       import io.circe._, io.circe.syntax._, io.circe.generic.auto._
       Future.successful(
         HttpResponse(entity = HttpEntity(`application/json`, token.asJson.noSpaces.toString))

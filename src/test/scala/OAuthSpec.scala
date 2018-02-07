@@ -76,7 +76,7 @@ class OAuthSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck
               getSlackAccessToken(cfg, code, new FakeOAuthHttpService).
                 runReader(("raymond", "raymond-secret-key".some)).
                 runWriter.runSequential, timeout)
-          token._1.get.access_token === "test-token"
+          token._1.get.access_token.value === "test-token"
           token._1.get.scope === List("read")
         case Left(_)  ⇒ false
       }

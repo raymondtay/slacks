@@ -21,6 +21,7 @@ import cats._, implicits._
 import akka.actor._
 import akka.stream._
 import providers.slack.models._
+import slacks.core.models.Token
 
 class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck with Specs2RouteTest { override def is = sequential ^ s2"""
 
@@ -66,7 +67,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
           val (channels, logInfo) =
             Await.result(
               getChannelList(cfg, new FakeChannelListingHttpService).
-                runReader(SlackAccessToken("fake-slack-token",
+                runReader(SlackAccessToken(Token("xoxp-","fake-slack-token"),
                   "channels:list" :: Nil)).
                 runWriter.runSequential, 9 second)
           channels.xs.size != 0
@@ -88,7 +89,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
           val (channels, logInfo) =
             Await.result(
               ChannelConversationInterpreter.getChannelHistory(channelId, cfg, new FakeChannelHistoryHttpService).
-                runReader(SlackAccessToken("fake-slack-token",
+                runReader(SlackAccessToken(Token("xoxp-","fake-slack-token"),
                   "channels:list" :: Nil)).
                 runWriter.runSequential, 9 second)
           channels.xs.size != 0
@@ -109,7 +110,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
           val (messages, logInfo) =
             Await.result(
               ChannelConversationInterpreter.getChannelConversationHistory(channelId, cfg, new FakeChannelConversationHistoryHttpService).
-                runReader(SlackAccessToken("fake-slack-access-token", "channels:history" :: Nil)).  runWriter.runSequential, 9 second)
+                runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "channels:history" :: Nil)).  runWriter.runSequential, 9 second)
           messages.botMessages.size == 2
           messages.userAttachmentMessages.size == 2
           messages.userFileShareMessages.foldLeft(0)((acc,e) ⇒ e.comments.size + acc) == 5
@@ -137,7 +138,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
                                                    channelId,
                                                    new FakeChannelConversationHistoryHttpService,
                                                    message,
-                                                   SlackAccessToken("fake-slack-access-token", "channels:history" :: Nil)).runReader(tracer).runWriter.runEither.runWriter.runEval.run
+                                                   SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "channels:history" :: Nil)).runReader(tracer).runWriter.runEither.runWriter.runEval.run
           messageProcess match {
             case Left(error) ⇒ false // should not happen
             case Right(datum) ⇒
@@ -168,7 +169,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
               traceGetChannelList(cfg,
                                   new FakeChannelListingHttpService,
                                   message,
-                                  SlackAccessToken("fake-slack-token", "channels.list" :: Nil)
+                                  SlackAccessToken(Token("xoxp-","fake-slack-token"), "channels.list" :: Nil)
                                 ).runReader(tracer).runWriter.runEither.runWriter.runEval.run
           channelResult match {
             case Left(error) ⇒ false // should not happen
@@ -200,7 +201,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
                                        channelId,
                                        new FakeChannelHistoryHttpService,
                                        message,
-                                       SlackAccessToken("fake-slack-token", "channels.list" :: Nil)
+                                       SlackAccessToken(Token("xoxp-","fake-slack-token"), "channels.list" :: Nil)
                                      ).runReader(tracer).runWriter.runEither.runWriter.runEval.run
           channelResult match {
             case Left(error) ⇒ false // should not happen

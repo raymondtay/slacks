@@ -15,7 +15,7 @@ package object models {
   //
   import scala.util._
   import shapeless._ , record._, syntax.singleton._
-  private[models] val slackPrefixes = Set("xoxp-", "xoxa-", "xoxb-")
+  val slackPrefixes = Set("xoxp-", "xoxa-", "xoxb-")
 
   case class Token(prefix: String, value: String) extends Model[String] {
     assert(prefix != "" && slackPrefixes.contains(prefix), s"Invariant failed: expecting a prefix like ${slackPrefixes.mkString(",")}")
