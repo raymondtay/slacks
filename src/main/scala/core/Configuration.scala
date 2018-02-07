@@ -113,7 +113,8 @@ case class SlackUsersListConfig[A](url : String, params : List[ParamType[A]], ti
 case class SlackChannelListConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackChannelReadConfig[A](url : String, params : List[ParamType[A]], timeout : Long) extends Serializable
 case class SlackChannelReadRepliesConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
-case class SlackAuthConfig[A](url : String, params : List[ParamType[A]])
+case class SlackAuthConfig[A](url : String, params : List[ParamType[A]], scope: SlackAuthScopeConfig[A])
+case class SlackAuthScopeConfig[A](url : String, params : List[ParamType[A]], timeout: Long)
 case class SlackAccessConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackTeamInfoConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackEmojiListConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
@@ -146,7 +147,10 @@ object ConfigValidator extends ConfigValidator {
 
   def validateAuthConfig(config : Config) =
     (validateUrl(config), 
-    validateParams(config)).mapN((url, params) ⇒ SlackAuthConfig(url,params))
+    validateParams(config), 
+    validateUrl(config.getConfig("scope")),
+    validateParams(config.getConfig("scope")),
+    validateTimeout(config.getConfig("scope"))).mapN((url, params, scopeUrl, scopeParams, scopeTimeout) ⇒ SlackAuthConfig(url,params, SlackAuthScopeConfig(scopeUrl, scopeParams, scopeTimeout)))
 
   def validateAccessConfig(config : Config) =
     (validateUrl(config), 

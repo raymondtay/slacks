@@ -13,16 +13,25 @@ object ConfigData {
     slacks.oauth.auth {
       url = "http://google.com"
       params = ["aaa", "bbb"]
+      scope.url = "http://api.slack.com/blahblah"
+      scope.params = ["token"]
+      scope.timeout = 4
     }""" ,
     """
     slacks.oauth.auth {
       url = "https://slack.com/oauth/authorize"
       params = ["client_id", "redirect_uri?"]
+      scope.url = "http://api.slack.com/blahblah"
+      scope.params = ["token"]
+      scope.timeout = 4
     }""" ,
     """
     slacks.oauth.auth {
       url = "https://slack.com/oauth/authorize"
       params = ["client_id", "scope", "redirect_uri?", "state?", "team?"]
+      scope.url = "http://api.slack.com/blahblah"
+      scope.params = ["token"]
+      scope.timeout = 4
     }
     """).map(cfg ⇒ ConfigFactory.parseString(cfg))
 
@@ -49,34 +58,55 @@ object ConfigData {
   val badCfgs = List("""
     slacks.oauth.auth {
       params = ["aaa", "bbb"]
+      scope.url = "http://api.slack.com/blahblah"
+      scope.params = ["token"]
+      scope.timeout = 4
     }""" ,
     """
     slacks.oauth.auth {
       url = "http://finance.yahoo.com/q/h?s=^IXIC"
       params = ["", ""]
+      scope.url = "http://api.slack.com/blahblah"
+      scope.params = ["token"]
+      scope.timeout = 4
     }""" ,
     """
     slacks.oauth.auth {
       url = "https://slack.com/oauth/authorize"
       params = ["", ""]
+      scope.url = "http://api.slack.com/blahblah"
+      scope.params = ["token"]
+      scope.timeout = 4
     }""" ,
     """
     slacks.oauth.auth {
       url = "https://slack.com/oauth/authorize"
+      scope.url = "http://api.slack.com/blahblah"
+      scope.params = ["token"]
+      scope.timeout = 4
     }""" ,
     """
     slacks.oauth.auth {
+      scope.url = "http://api.slack.com/blahblah"
+      scope.params = ["token"]
+      scope.timeout = 4
     }
     """).map(cfg ⇒ ConfigFactory.parseString(cfg))
 
   val missingData1 = List("""
     slacks.oauth.auth {
       params = []
+      scope.url = "http://api.slack.com/blahblah"
+      scope.params = ["token"]
+      scope.timeout = 4
     }
     """,
     """
      slacks.oauth.auth {
       url = ""
+      scope.url = "http://api.slack.com/blahblah"
+      scope.params = ["token"]
+      scope.timeout = 4
     }
     """
     ).map(cfg ⇒ ConfigFactory.parseString(cfg))

@@ -1,8 +1,9 @@
 package slacks.core.program
 
 import providers.slack.algebra._
+import slacks.core.models.Token
 import providers.slack.models.SlackAccessToken
-import slacks.core.config.SlackAccessConfig
+import slacks.core.config.{SlackAccessConfig, SlackAuthScopeConfig}
 
 import akka.actor._
 import akka.http.scaladsl.{Http, HttpExt}
@@ -59,3 +60,35 @@ class SlackActor(cfg : SlackAccessConfig[String],
 
 }
 
+class SlackScopeActor(cfg : SlackAuthScopeConfig[String], slackToken : Token, httpService : HttpService)
+                     (implicit aS: ActorSystem, aM: ActorMaterializer) extends Actor with ActorLogging {
+
+  import akka.pattern.{ask, pipe}
+  import context.dispatcher
+  import cats._, implicits._
+
+  implicit val http = Http(context.system)
+  private var token : Option[SlackAccessToken[String]] = None
+
+  override def preStart() = {
+    val _uri = s"${cfg.url}?token=${Monoid[String].combine(slackToken.prefix, slackToken.value)}"
+    httpService.makeSingleRequest.run(_uri).pipeTo(self)
+  }
+
+  def receive = {
+    case HttpResponse(StatusCodes.OK, headers, entity, _) ⇒
+      val scopesH : HttpHeader = headers.filter(header ⇒ header.name() == "x-oauth-scopes").head
+      val scopes : Array[String] = scopesH.value().split(",")
+      token = SlackAccessToken(slackToken, scopes.toList).some
+
+    case resp @ HttpResponse(code, _, _, _) ⇒
+      log.info("Request failed, response code: " + code)
+      resp.discardEntityBytes()
+
+    case GetToken ⇒
+      sender ! token
+
+    case StopAction ⇒ context stop self
+  }
+
+}

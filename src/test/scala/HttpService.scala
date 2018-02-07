@@ -755,3 +755,16 @@ class FakeOAuthHttpService extends HttpService {
   }
 }
 
+class FakeOAuthScopeHttpService extends HttpService {
+  import cats.data.Kleisli, cats.implicits._
+  import ContentTypes._
+  import scala.concurrent.Future
+  override def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) = Kleisli{ 
+    (_uri: String) ⇒ 
+      val oauthScopeHeaders : Seq[HttpHeader] = HttpHeader.parse("x-oauth-scopes", "files.read,identity") match {
+        case HttpHeader.ParsingResult.Ok(headerWeWant, errors) ⇒ Seq(headerWeWant)
+        case _ ⇒ Seq()
+      }
+      Future.successful(HttpResponse(StatusCodes.OK, oauthScopeHeaders.to[collection.immutable.Seq], "dummy text you are not suppose to parse anyway"))
+  }
+}

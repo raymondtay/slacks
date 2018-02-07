@@ -24,6 +24,7 @@ object OAuth {
   import org.atnos.eff.future._
 
   type Stack = Fx.fx3[TimedFuture, WriterString, ReaderCredentials]
+  type GetAuthScopeStack = Fx.fx2[TimedFuture, WriterString]
 
   type CredentialsStack = Fx.fx3[WriterString, ReaderCredentials, Eval]
 }
