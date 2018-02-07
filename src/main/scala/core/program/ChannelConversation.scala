@@ -41,7 +41,7 @@ object ChannelConversationInterpreter {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val supervisor = actorSystem.actorOf(Props[SupervisorRestartN], s"supervisorRestartN_${java.util.UUID.randomUUID.toString}")
-    implicit val createActorTimeout = Timeout(200 milliseconds)
+    implicit val createActorTimeout = Timeout(1 seconds)
     val actor = Await.result((supervisor ? Props(new SlackChannelHistoryActor(channelId, cfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
     val timeout = Timeout(cfg.timeout seconds)
     // TODO: Once Eff-Monad upgrades to allow waitFor, retryUntil, we will take
@@ -62,7 +62,7 @@ object ChannelConversationInterpreter {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val supervisor = actorSystem.actorOf(Props[SupervisorRestartN], s"supervisorRestartN_${java.util.UUID.randomUUID.toString}")
-    implicit val createActorTimeout = Timeout(200 milliseconds)
+    implicit val createActorTimeout = Timeout(1 seconds)
     val actor = Await.result((supervisor ? Props(new SlackConversationHistoryActor(channelId, cfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
     val timeout = Timeout(cfg.timeout seconds)
     // TODO: Once Eff-Monad upgrades to allow waitFor, retryUntil, we will take
