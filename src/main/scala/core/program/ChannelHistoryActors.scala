@@ -41,7 +41,7 @@ class SlackChannelHistoryActor(channelId: ChannelId,
   import Channels._
 
   implicit val http = Http(context.system)
-  private val defaultUri = s"${cfg.url}?channel=${channelId}&token=${token.access_token}&limit=20"
+  private val defaultUri = s"${cfg.url}?channel=${channelId}&token=${Monoid[String].combine(token.access_token.prefix, token.access_token.value)}&limit=20"
   private def continuationUri = (cursor:String) ⇒ defaultUri + s"&limit=20&cursor=${cursor}"
   private var localStorage : Messages = Messages(Nil)
 

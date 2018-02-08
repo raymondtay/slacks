@@ -60,7 +60,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   type S2 = Fx.fx5[Store, ReaderBytes, WriteLog, List, Option]
 
   implicit val http = Http(context.system)
-  private val defaultUri = s"${cfg.url}?channel=${channelId}&token=${token.access_token}&limit=1000"
+  private val defaultUri = s"${cfg.url}?channel=${channelId}&token=${Monoid[String].combine(token.access_token.prefix, token.access_token.value)}&limit=1000"
   private def continuationUri = (cursor:String) ⇒ defaultUri + s"&limit=1000&cursor=${cursor}"
   private var localStorage : SievedMessages = SievedMessages(Nil, Nil, Nil)
   private val cursorState : Cursor = Cursor("")

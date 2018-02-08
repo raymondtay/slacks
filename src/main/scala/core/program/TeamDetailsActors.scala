@@ -44,7 +44,7 @@ class SlackTeamInfoActor(teamInfoCfg : SlackTeamInfoConfig[String],
   import context.dispatcher
 
   implicit val http = Http(context.system)
-  private val defaultUri = s"${teamInfoCfg.url}?token=${token.access_token}"
+  private val defaultUri = s"${teamInfoCfg.url}?token=${Monoid[String].combine(token.access_token.prefix, token.access_token.value)}"
   private var localStorage : (TeamId, io.circe.Json) = ("", io.circe.Json.Null)
 
   type ParseJson[A] = io.circe.ParsingFailure Either A
@@ -121,7 +121,7 @@ class SlackEmojiListActor(emojiListCfg : SlackEmojiListConfig[String],
   import context.dispatcher
 
   implicit val http = Http(context.system)
-  private val defaultUri = s"${emojiListCfg.url}?token=${token.access_token}"
+  private val defaultUri = s"${emojiListCfg.url}?token=${Monoid[String].combine(token.access_token.prefix, token.access_token.value)}"
   private var localStorage : io.circe.Json = io.circe.Json.Null
 
   type ParseJson[A] = io.circe.ParsingFailure Either A
