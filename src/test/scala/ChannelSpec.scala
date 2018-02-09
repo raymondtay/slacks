@@ -54,47 +54,43 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
     }
 
   def getChannelListing = {
-    Get("/fake.slack.com") ~> simulatedRoute ~> check {
-      import ChannelsInterpreter._
-      import scala.concurrent._, duration._
+    import ChannelsInterpreter._
+    import scala.concurrent._, duration._
 
-      val code = responseAs[String]
-
-      implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
-      import slacks.core.config.Config
-      Config.channelListConfig match { // this tests the configuration loaded in application.conf
-        case Right(cfg) ⇒
-          val (channels, logInfo) =
-            Await.result(
-              getChannelList(cfg, new FakeChannelListingHttpService).
-                runReader(SlackAccessToken(Token("xoxp-","fake-slack-token"),
-                  "channels:list" :: Nil)).
-                runWriter.runSequential, 9 second)
-          channels.xs.size != 0
-        case Left(_)  ⇒ false
-      }
+    implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
+    import slacks.core.config.Config
+    Config.channelListConfig match { // this tests the configuration loaded in application.conf
+      case Right(cfg) ⇒
+        val (channels, logInfo) =
+          Await.result(
+            getChannelList(cfg, new FakeChannelListingHttpService).
+              runReader(SlackAccessToken(Token("xoxp-","fake-slack-token"), "channels:list" :: Nil)).
+              runWriter.
+              runSequential, 9 second)
+        channels.xs.size != 0
+      case Left(_)  ⇒ false
     }
   }
 
   def getChannelHistory = {
-      import ChannelConversationInterpreter._
-      import scala.concurrent._, duration._
+    import ChannelConversationInterpreter._
+    import scala.concurrent._, duration._
 
-      val channelId = "C024Z5MQT"
+    val channelId = "C024Z5MQT"
 
-      implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
-      import slacks.core.config.Config
-      Config.channelReadConfig match { // this tests the configuration loaded in application.conf
-        case Right(cfg) ⇒
-          val (channels, logInfo) =
-            Await.result(
-              ChannelConversationInterpreter.getChannelHistory(channelId, cfg, new FakeChannelHistoryHttpService).
-                runReader(SlackAccessToken(Token("xoxp-","fake-slack-token"),
-                  "channels:list" :: Nil)).
-                runWriter.runSequential, 9 second)
-          channels.xs.size != 0
-        case Left(_)  ⇒ false
-      }
+    implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
+    import slacks.core.config.Config
+    Config.channelReadConfig match { // this tests the configuration loaded in application.conf
+      case Right(cfg) ⇒
+        val (channels, logInfo) =
+          Await.result(
+            ChannelConversationInterpreter.getChannelHistory(channelId, cfg, new FakeChannelHistoryHttpService).
+              runReader(SlackAccessToken(Token("xoxp-","fake-slack-token"), "channels:list" :: Nil)).
+              runWriter.
+              runSequential, 2 second)
+        channels.xs.size != 0
+      case Left(_)  ⇒ false
+    }
   }
 
   def getChannelConversationHistory = {
@@ -110,7 +106,9 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
           val (messages, logInfo) =
             Await.result(
               ChannelConversationInterpreter.getChannelConversationHistory(channelId, cfg, new FakeChannelConversationHistoryHttpService).
-                runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "channels:history" :: Nil)).  runWriter.runSequential, 9 second)
+                runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "channels:history" :: Nil)).
+                runWriter.
+                runSequential, 9 second)
           messages.botMessages.size == 2
           messages.userAttachmentMessages.size == 2
           messages.userFileShareMessages.foldLeft(0)((acc,e) ⇒ e.comments.size + acc) == 5

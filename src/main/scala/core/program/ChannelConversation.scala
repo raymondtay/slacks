@@ -41,17 +41,30 @@ object ChannelConversationInterpreter {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val supervisor = actorSystem.actorOf(Props[SupervisorRestartN], s"supervisorRestartN_${java.util.UUID.randomUUID.toString}")
-    implicit val createActorTimeout = Timeout(1 seconds)
+    implicit val createActorTimeout = Timeout(3 seconds)
     val actor = Await.result((supervisor ? Props(new SlackChannelHistoryActor(channelId, cfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
     val timeout = Timeout(cfg.timeout seconds)
-    // TODO: Once Eff-Monad upgrades to allow waitFor, retryUntil, we will take
-    // this abomination out.
-    // Rationale for allowing the sleep to occur is because the ask i.e. ? will
-    // occur before the http-request which would return a None.
-    Thread.sleep(cfg.timeout * 1000)
-    futureDelay[Stack, Messages](Await.result((actor ? GetChannelHistory).mapTo[Messages], timeout.duration))
+    futureDelay[Stack, Messages](
+      Await.result((actor ? GetChannelHistory).mapTo[Messages], timeout.duration)
+    ).retryUntil(s ⇒ s.xs.size > 0, List.range(1, cfg.timeout, 2).map(t ⇒ Timeout(t.seconds).duration))
   }
  
+   /**
+    * The async processing (via Actors) will continuously pull data from Slack
+    * and store into its state while we retrieve it asynchronously till we
+    * exhausted all our timeouts.
+    *
+    * How we have chose to do this is roughly as follows:
+    * Grab the processed data from the worker actor and check if the size
+    * is GT 0; if yes, we discontinue if no we wait 2 seconds longer than the
+    * previous wait-time (till we reach the maximum timeout). This strategy
+    * allows the async process to work through the data wrangling.
+    *
+    * @param channelId
+    * @param config
+    * @param token
+    * @param httpService
+    */
   private def getChannelConversationHistoryFromSlack(channelId: ChannelId, 
                                                      cfg: SlackChannelReadConfig[String], 
                                                      token: SlackAccessToken[String],
@@ -62,15 +75,17 @@ object ChannelConversationInterpreter {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val supervisor = actorSystem.actorOf(Props[SupervisorRestartN], s"supervisorRestartN_${java.util.UUID.randomUUID.toString}")
-    implicit val createActorTimeout = Timeout(1 seconds)
+    implicit val createActorTimeout = Timeout(3 seconds)
     val actor = Await.result((supervisor ? Props(new SlackConversationHistoryActor(channelId, cfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
     val timeout = Timeout(cfg.timeout seconds)
-    // TODO: Once Eff-Monad upgrades to allow waitFor, retryUntil, we will take
-    // this abomination out.
-    // Rationale for allowing the sleep to occur is because the ask i.e. ? will
-    // occur before the http-request which would return a None.
-    Thread.sleep(cfg.timeout * 1000)
-    futureDelay[Stack, SievedMessages](Await.result((actor ? GetConversationHistory).mapTo[SievedMessages], timeout.duration))
+    futureDelay[Stack, SievedMessages](
+      Await.result((actor ? GetConversationHistory).mapTo[SievedMessages], timeout.duration)
+    ).retryUntil(
+      s ⇒ 
+        Monoid[Int].combine(s.botMessages.size,
+          Monoid[Int].combine(s.userFileShareMessages.size, s.userAttachmentMessages.size)) > 0,
+        List.range(1, cfg.timeout, 2).map(t ⇒ Timeout(t.seconds).duration)
+    )
   }
  
    /** 

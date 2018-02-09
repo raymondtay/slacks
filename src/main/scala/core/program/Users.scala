@@ -44,6 +44,21 @@ object UsersInterpreter {
     _     <- tell[GetUsersStack, String]("[Get-All-Users] Slack users information retrieved.")
   } yield users
 
+   /**
+    * The async processing (via Actors) will continuously pull data from Slack
+    * and store into its state while we retrieve it asynchronously till we
+    * exhausted all our timeouts.
+    *
+    * How we have chose to do this is roughly as follows:
+    * Grab the processed data from the worker actor and check if the size
+    * is GT 0; if yes, we discontinue if no we wait 2 seconds longer than the
+    * previous wait-time (till we reach the maximum timeout). This strategy
+    * allows the async process to work through the data wrangling.
+    *
+    * @param config
+    * @param token
+    * @param httpService
+    */
   private def getAllUsersFromSlack(cfg: SlackUsersListConfig[String],
                                    token: SlackAccessToken[String],
                                    httpService : HttpService)(implicit actorSystem : ActorSystem, actorMat: ActorMaterializer) = {
@@ -53,11 +68,12 @@ object UsersInterpreter {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val supervisor = actorSystem.actorOf(Props[SupervisorRestartN], s"supervisorRestartN_${java.util.UUID.randomUUID.toString}")
-    implicit val createActorTimeout = Timeout(1 seconds)
+    implicit val createActorTimeout = Timeout(3 seconds)
     val actor = Await.result((supervisor ? Props(new SlackUsersActor(cfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
     val timeout = Timeout(cfg.timeout seconds)
-    Thread.sleep(cfg.timeout * 1000)
-    futureDelay[GetUsersStack, UserList](Await.result((actor ? GetUsers).mapTo[UserList], timeout.duration))
+    futureDelay[GetUsersStack, UserList](
+      Await.result((actor ? GetUsers).mapTo[UserList], timeout.duration)
+    ).retryUntil(s ⇒ s.users.size > 0, List.range(1, cfg.timeout, 2).map(t ⇒ Timeout(t.seconds).duration))
   }
 
 }
