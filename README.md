@@ -62,7 +62,7 @@ val (retrievedUsers, logInfo) =
 
 ```
 
-# Example of how to gather information about the team from Slack
+# Example of how to gather the team id from Slack
 This code snippet, hopefully, illustrates how you could call `getTeam`
 associated with the token you have. It also depends on whether the token has
 the necessary access.
