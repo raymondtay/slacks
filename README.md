@@ -27,6 +27,29 @@ OAuth model.
 if you feel uncomfortable about exposing these credentials in the configuration
 file `application.conf`
 
+# Example of how to retrieve users from Slack
+This code snippet, hopefully, illustrates how you could call `getAllUsers`
+associated with the token you have. It also depends on whether the token has
+the necessary access.
+
+```scala
+import slacks.core.program._
+import scala.concurrent._, duration._
+import scala.concurrent.ExecutionContext.Implicits.global
+
+  val timeout = akka.util.Timeout( 2 seconds )
+  val accessToken = // some slack token
+
+  val (retrievedUsers, logInfo) =
+    Await.result(
+      getAllUsers(cfg, httpService).
+        runReader(accessToken).
+        runWriter.
+        runSequential, timeout)
+    )
+
+```
+
 # License
 
 The MIT License (MIT)

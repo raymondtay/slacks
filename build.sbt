@@ -27,6 +27,9 @@ enablePlugins(JavaServerAppPackaging)
 
 resolvers += Resolver.sonatypeRepo("releases")
 
+// Supporting code in markdowns
+enablePlugins(TutPlugin)
+
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.4")
 
 // if your project uses multiple Scala versions, use this for cross building
