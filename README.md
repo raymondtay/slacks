@@ -4,6 +4,13 @@
 
 A mini library for Slack
 
+# Supported Features
+
+* Retrieve all users
+* Retrieve team information
+* Retrieve all channels
+* Retrieve all posts associated with all channels
+
 # dependencies
 
 At the moment, `slacks` uses `cats`, `eff`, `fastparse`, `scalacheck` and
@@ -27,29 +34,57 @@ OAuth model.
 if you feel uncomfortable about exposing these credentials in the configuration
 file `application.conf`
 
+The following two sections demonstrate what you can do with..
+
 # Example of how to retrieve users from Slack
 This code snippet, hopefully, illustrates how you could call `getAllUsers`
 associated with the token you have. It also depends on whether the token has
 the necessary access.
+
+Refer to the tests in `src/test/scala` for more examples.
 
 ```scala
 import slacks.core.program._
 import scala.concurrent._, duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-  val timeout = akka.util.Timeout( 2 seconds )
-  val accessToken = // some slack token
+val timeout = akka.util.Timeout( 2 seconds )
+val accessToken = // some slack token
+val cfg : NonEmptyList[ConfigValidation] Either SlackUsersListConfig = // configuration 
 
-  val (retrievedUsers, logInfo) =
-    Await.result(
-      getAllUsers(cfg, httpService).
-        runReader(accessToken).
-        runWriter.
-        runSequential, timeout)
-    )
+val (retrievedUsers, logInfo) =
+  Await.result(
+    getAllUsers(cfg, httpService).
+      runReader(accessToken).
+      runWriter.
+      runSequential, timeout)
+  )
 
 ```
 
+# Example of how to gather information about the team from Slack
+This code snippet, hopefully, illustrates how you could call `getTeam`
+associated with the token you have. It also depends on whether the token has
+the necessary access.
+
+Refer to the tests in `src/test/scala` for more examples.
+
+```scala
+import slacks.core.program._
+import scala.concurrent._, duration._
+import scala.concurrent.ExecutionContext.Implicits.global
+
+val timeout = akka.util.Timeout( 2 seconds )
+val accessToken = // some slack token
+val teamInfoCfg : NonEmptyList[ConfigValidation] Either SlackTeamInfoConfig = // config object
+
+val (teamId, logInfo) =
+  Await.result(
+    getTeam(teamInfoCfg, httpService).
+      runReader(accessToken).
+      runWriter.
+      runSequential, timeout)
+```
 # License
 
 The MIT License (MIT)
