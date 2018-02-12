@@ -61,7 +61,7 @@ object OAuthInterpreter {
     val timeout = Timeout(cfg.timeout seconds)
     futureDelay[Stack, Option[SlackAccessToken[String]]](
       Await.result((actor ? GetToken).mapTo[Option[SlackAccessToken[String]]], timeout.duration)
-    ).retryUntil( s ⇒ s match { case None ⇒ false; case Some(_) ⇒ true }, List.range(1, cfg.timeout, 2).map(t ⇒ Timeout(t.seconds).duration) )
+    ).retryUntil( s ⇒ s match { case None ⇒ false; case Some(_) ⇒ true }, List(cfg.timeout / 2).map(t ⇒ Timeout(t.seconds).duration) )
   }
 
   def getClientCredentials : Eff[CredentialsStack, Option[ClientSecretKey]] = for {
@@ -115,7 +115,7 @@ object OAuthInterpreter {
     val timeout = Timeout(cfg.timeout seconds)
     futureDelay[GetAuthScopeStack, Option[SlackAccessToken[String]]](
       Await.result((actor ? GetToken).mapTo[Option[SlackAccessToken[String]]], timeout.duration)
-    ).retryUntil( s ⇒ s match { case None ⇒ false; case Some(_) ⇒ true }, List.range(1, cfg.timeout, 2).map(t ⇒ Timeout(t.seconds).duration) )
+    ).retryUntil( s ⇒ s match { case None ⇒ false; case Some(_) ⇒ true }, List(cfg.timeout / 2).map(t ⇒ Timeout(t.seconds).duration) )
   }
  
   /**

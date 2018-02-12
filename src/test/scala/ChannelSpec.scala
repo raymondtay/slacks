@@ -66,7 +66,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
             getChannelList(cfg, new FakeChannelListingHttpService).
               runReader(SlackAccessToken(Token("xoxp-","fake-slack-token"), "channels:list" :: Nil)).
               runWriter.
-              runSequential, 9 second)
+              runSequential, cfg.timeout second)
         channels.xs.size != 0
       case Left(_)  ⇒ false
     }
@@ -87,7 +87,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
             ChannelConversationInterpreter.getChannelHistory(channelId, cfg, new FakeChannelHistoryHttpService).
               runReader(SlackAccessToken(Token("xoxp-","fake-slack-token"), "channels:list" :: Nil)).
               runWriter.
-              runSequential, 2 second)
+              runSequential, cfg.timeout second)
         channels.xs.size != 0
       case Left(_)  ⇒ false
     }
@@ -108,7 +108,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
               ChannelConversationInterpreter.getChannelConversationHistory(channelId, cfg, new FakeChannelConversationHistoryHttpService).
                 runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "channels:history" :: Nil)).
                 runWriter.
-                runSequential, 9 second)
+                runSequential, cfg.timeout second)
           messages.botMessages.size == 2
           messages.userAttachmentMessages.size == 2
           messages.userFileShareMessages.foldLeft(0)((acc,e) ⇒ e.comments.size + acc) == 5
@@ -141,7 +141,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
             case Left(error) ⇒ false // should not happen
             case Right(datum) ⇒
               val (actualMessagesFuture, tracerLogs) = datum
-              val (messages, botLogs) = Await.result(actualMessagesFuture, 2 seconds)
+              val (messages, botLogs) = Await.result(actualMessagesFuture, cfg.timeout seconds)
               messages.botMessages.size == 2
               messages.userAttachmentMessages.size == 2
           }
@@ -173,7 +173,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
             case Left(error) ⇒ false // should not happen
             case Right(datum) ⇒
               val (actualChannelResultsFuture, tracerLogs) = datum
-              val (channels, channelLogs) = Await.result(actualChannelResultsFuture, 2 seconds)
+              val (channels, channelLogs) = Await.result(actualChannelResultsFuture, cfg.timeout seconds)
               channels.xs.size != 0
           }
         case Left(_)  ⇒ false
@@ -205,7 +205,7 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
             case Left(error) ⇒ false // should not happen
             case Right(datum) ⇒
               val (actualChannelResultsFuture, tracerLogs) = datum
-              val (channels, channelLogs) = Await.result(actualChannelResultsFuture, 2 seconds)
+              val (channels, channelLogs) = Await.result(actualChannelResultsFuture, cfg.timeout seconds)
               channels.xs.size != 0
           }
         case Left(_)  ⇒ false
