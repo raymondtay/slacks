@@ -40,7 +40,7 @@ class TeamInfoSpec(implicit ee: ExecutionEnv) extends Specification with Specs2R
 
     implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
     import slacks.core.config.Config
-    Config.teamInfoConfig match { // this tests the configuration loaded in application.conf
+    (Config.teamInfoConfig : @unchecked) match { // this tests the configuration loaded in application.conf
       case Right(teamInfoCfg) ⇒
         val (teamId, logInfo) =
           Await.result(

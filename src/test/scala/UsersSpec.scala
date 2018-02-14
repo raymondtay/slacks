@@ -28,33 +28,42 @@ class UsersSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck
   OpenTracing Disabled
   --------------------------------------------------------------
   The users stack can be used to
-    return all users in the team $getUsers
-
+    return all users in the team when data is not paginated $getUsersWhenDataIsNotPaginated
+    return all users in the team when data is paginated     $getUsersWhenDataIsPaginated
   """
 
-  val simulatedRoute = 
-    Directives.get {
-      path("fake.slack.com/api/users.list") {
-        val json = """{}"""
-        complete(json) // simulates json back from Slack
-      }
+  def getUsersWhenDataIsNotPaginated = {
+    import UsersInterpreter._
+    import scala.concurrent._, duration._
+
+    implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
+    import slacks.core.config.Config
+    Config.usersListConfig match { // this tests the configuration loaded in application.conf
+      case Right(cfg) ⇒
+        val (retrievedUsers, logInfo) =
+          Await.result(
+            getAllUsers(cfg, new FakeGetAllUsersWithoutPaginationHttpService).
+              runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "users:list" :: Nil)).  runWriter.runSequential, 9 second)
+        retrievedUsers.users.size == 2
+      case Left(_)  ⇒ false
     }
+  }
 
-  def getUsers = {
-      import UsersInterpreter._
-      import scala.concurrent._, duration._
+  def getUsersWhenDataIsPaginated = {
+    import UsersInterpreter._
+    import scala.concurrent._, duration._
 
-      implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
-      import slacks.core.config.Config
-      Config.usersListConfig match { // this tests the configuration loaded in application.conf
-        case Right(cfg) ⇒
-          val (retrievedUsers, logInfo) =
-            Await.result(
-              getAllUsers(cfg, new FakeGetAllUsersHttpService).
-                runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "users:list" :: Nil)).  runWriter.runSequential, 9 second)
-          retrievedUsers.users.size == 20
-        case Left(_)  ⇒ false
-      }
+    implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
+    import slacks.core.config.Config
+    Config.usersListConfig match { // this tests the configuration loaded in application.conf
+      case Right(cfg) ⇒
+        val (retrievedUsers, logInfo) =
+          Await.result(
+            getAllUsers(cfg, new FakeGetAllUsersWithPaginationHttpService).
+              runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "users:list" :: Nil)).  runWriter.runSequential, 9 second)
+        retrievedUsers.users.size == 4
+      case Left(_)  ⇒ false
+    }
   }
 
 }
