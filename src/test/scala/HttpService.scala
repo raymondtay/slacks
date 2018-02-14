@@ -215,6 +215,16 @@ class FakeGetAllUsersWithoutPaginationHttpService extends HttpService {
   }
 }
 
+class FakeChannelHistoryHttpServiceWhenRemoteIsDown extends HttpService {
+  import cats.data.Kleisli, cats.implicits._
+  import ContentTypes._
+  import scala.concurrent.Future
+  override def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) = Kleisli{ 
+    (_uri: String) ⇒ 
+      Future.successful(HttpResponse(status = StatusCodes.InternalServerError)) 
+  }
+}
+
 class FakeChannelHistoryHttpService extends HttpService {
   import cats.data.Kleisli, cats.implicits._
   import ContentTypes._
@@ -226,6 +236,18 @@ class FakeChannelHistoryHttpService extends HttpService {
  
       Future.successful(
         HttpResponse(entity = HttpEntity(`application/json`, jsonData))
+      )
+  }
+}
+
+class FakeChannelConversationHistoryHttpServiceWhenRemoteIsDown extends HttpService {
+  import cats.data.Kleisli, cats.implicits._
+  import ContentTypes._
+  import scala.concurrent.Future
+  override def makeSingleRequest(implicit http: HttpExt, akkaMat: ActorMaterializer) = Kleisli{ 
+    (_uri: String) ⇒ 
+      Future.successful(
+        HttpResponse(status = StatusCodes.InternalServerError)
       )
   }
 }
