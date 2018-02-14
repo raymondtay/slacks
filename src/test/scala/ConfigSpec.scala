@@ -357,9 +357,10 @@ class ConfigSpec extends mutable.Specification with ScalaCheck {
   {
     import ConfigData.arbGoodConfig1
     "Valid 'url' and 'params' will be registered and caught." >> prop{ (cfg: Config) ⇒
+      import cats._, data._, implicits._
       ConfigValidator.validateAuthConfig(cfg.getConfig("slacks.oauth.auth")) match {
-        case Valid(slackConfig) ⇒ true
-        case Invalid(_) ⇒ false
+        case s @ Valid(_)   ⇒ s.toEither must beRight
+        case e @ Invalid(_) ⇒ e.toEither must beLeft
       }
     }.set(minTestsOk = minimumNumberOfTests, workers = 1)
   }
@@ -367,9 +368,10 @@ class ConfigSpec extends mutable.Specification with ScalaCheck {
   {
     import ConfigData.arbGoodConfig2
     "Valid 'url' and 'params' and 'timeout' will be registered and caught." >> prop{ (cfg: Config) ⇒
+      import cats._, data._, implicits._
       ConfigValidator.validateAccessConfig(cfg.getConfig("slacks.oauth.access")) match {
-        case Valid(slackConfig) ⇒ true
-        case Invalid(_) ⇒ false
+        case s @ Valid(_)   ⇒ s.toEither must beRight
+        case e @ Invalid(_) ⇒ e.toEither must beLeft
       }
     }.set(minTestsOk = minimumNumberOfTests, workers = 1)
   }
@@ -377,9 +379,10 @@ class ConfigSpec extends mutable.Specification with ScalaCheck {
   {
     import ConfigData.arbBadConfig
     "part-1 Invalid/missing 'url' and/or 'params' would be caught." >> prop{ (cfg: Config) ⇒
+      import cats._, data._, implicits._
       ConfigValidator.validateAuthConfig(cfg.getConfig("slacks.oauth.auth")) match {
-        case Valid(_) ⇒ false
-        case Invalid(_) ⇒ true
+        case s @ Valid(_)   ⇒ s.toEither must beRight
+        case e @ Invalid(_) ⇒ e.toEither must beLeft
       }
     }.set(minTestsOk = minimumNumberOfTests, workers = 1)
   }
@@ -387,9 +390,10 @@ class ConfigSpec extends mutable.Specification with ScalaCheck {
   {
     import ConfigData.arbMissingData1Config
     "part-2 Invalid/missing 'url' and/or 'params' would be caught." >> prop{ (cfg: Config) ⇒
+      import cats._, data._, implicits._
       ConfigValidator.validateAuthConfig(cfg.getConfig("slacks.oauth.auth")) match {
-        case Valid(_) ⇒ false
-        case Invalid(_) ⇒ true
+        case s @ Valid(_)   ⇒ s.toEither must beRight
+        case e @ Invalid(_) ⇒ e.toEither must beLeft
       }
     }.set(minTestsOk = minimumNumberOfTests, workers = 1)
   }
@@ -397,9 +401,10 @@ class ConfigSpec extends mutable.Specification with ScalaCheck {
   {
     import ConfigData.arbMissingData2Config
     "part-3 Invalid/missing 'url' and/or 'params' and/or 'timeout' would be caught." >> prop{ (cfg: Config) ⇒
+      import cats._, data._, implicits._
       ConfigValidator.validateAccessConfig(cfg.getConfig("slacks.oauth.access")) match {
-        case Valid(_) ⇒ false
-        case Invalid(_) ⇒ true
+        case s @ Valid(_)   ⇒ s.toEither must beRight
+        case e @ Invalid(_) ⇒ e.toEither must beLeft
       }
     }.set(minTestsOk = minimumNumberOfTests, workers = 1)
   }
