@@ -1,6 +1,5 @@
 # slacks
-
-[![CircleCI](https://circleci.com/gh/raymondtay/slacks/tree/master.svg?style=svg)](https://circleci.com/gh/raymondtay/slacks/tree/master)
+[![CircleCI branch](https://img.shields.io/circleci/project/github/RedSparr0w/node-csgo-parser/master.svg)](https://circleci.com/gh/raymondtay/slacks/tree/master)
 
 A mini library for Slack
 
@@ -45,7 +44,7 @@ Refer to the tests in `src/test/scala` for more examples.
 
 ```scala
 import slacks.core.program._
-import scala.concurrent._, duration._
+import scala.concurrent._, duration._()
 import scala.concurrent.ExecutionContext.Implicits.global
 
 val timeout = akka.util.Timeout( 2 seconds )
