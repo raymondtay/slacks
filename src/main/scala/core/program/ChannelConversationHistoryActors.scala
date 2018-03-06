@@ -86,7 +86,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   val findAllBotMessages : Kleisli[List, io.circe.Json, BotAttachmentMessage] = Kleisli{ (json: io.circe.Json) ⇒
     import JsonCodecLens._
     val botMessages =
-      root.messages.each.filter{ (j: io.circe.Json) ⇒ isMessagePresentNMatched(j) }.obj.getAll(json)
+      root.messages.each.filter{ (j: io.circe.Json) ⇒ Applicative[Id].map2(isMessagePresentNMatched(j), isSubtypePresentNMatched("bot_message")(j))(_ && _) }.obj.getAll(json)
 
     botMessages.map{
       message ⇒
