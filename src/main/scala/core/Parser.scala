@@ -10,6 +10,19 @@ import org.slf4j.{Logger, LoggerFactory}
   * @version 1.0
   */
 
+// This object contains the regex pattern for parsing user mentions in Slack's
+// JSON response messages.
+object UserMentions {
+
+  // Based on Slack's user id nomenclature, a user mention would look like:
+  // a) <@U12231A>
+  // b) <@U123B|John>
+  private val usermentions = """<@(\w+)(\|\w+)*>""".r
+  def getUserIds = Kleisli{ (text: String) ⇒
+    usermentions.findAllMatchIn(text).toList.map(_.group(1))
+  }
+}
+
 // Typeclass for our slack parameters which might be mandatory or optional
 // as indicated by the regex in the `application.conf`
 //
