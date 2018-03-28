@@ -97,7 +97,8 @@ case class UserFile(
   mimetype : String,
   permalink : String,
   created : Long,
-  mode : String
+  mode : String,
+  mentions : List[String]
 ) extends Serializable
 
 case class UserFileComment(

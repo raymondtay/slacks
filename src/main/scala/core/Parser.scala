@@ -18,7 +18,7 @@ object UserMentions {
   // a) <@U12231A>
   // b) <@U123B|John>
   private val usermentions = """<@(\w+)(\|\w+)*>""".r
-  def getUserIds = Kleisli{ (text: String) ⇒
+  def getUserIds : Kleisli[List,String,String] = Kleisli{ (text: String) ⇒
     usermentions.findAllMatchIn(text).toList.map(_.group(1))
   }
 }

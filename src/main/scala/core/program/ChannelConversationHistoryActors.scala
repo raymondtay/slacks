@@ -138,10 +138,12 @@ class SlackConversationHistoryActor(channelId: ChannelId,
         Applicative[Id].map4(isMessagePresentNMatched(j), isSubtypePresentNMatched("file_share")(j), isFileFieldPresent(j), isUsernameFieldPresent(j))(_ && _ && _ && _)
       }.obj.getAll(json)
 
+    import slacks.core.parser.UserMentions
+
     sharedFileMessages.map{
       fileMessage ⇒
         val j : io.circe.Json = Json.fromJsonObject(fileMessage)
-        val userFile : UserFile = Applicative[Id].map12(
+        val userFile : UserFile = Applicative[Id].map13(
           getFileTypeValue(j),
           getFileIdValue(j),
           getFileTitleValue(j),
@@ -153,7 +155,8 @@ class SlackConversationHistoryActor(channelId: ChannelId,
           getFileMimeTypeValue(j),
           getPermalinkValue(j),
           getFileCreatedValue(j),
-          getFileModeValue(j))(UserFile.apply)
+          getFileModeValue(j), 
+          UserMentions.getUserIds(getFileInitialCommentValue(j)))(UserFile.apply)
 
         Applicative[Id].map8(getMessageValue(j), getSubtypeMessageValue(j),
                              getTextValue(j), userFile,

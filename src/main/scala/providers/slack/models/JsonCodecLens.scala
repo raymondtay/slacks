@@ -90,6 +90,9 @@ object JsonCodecLens {
   def getFileExternalTypeValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.file.external_type.string.getOption(json).getOrElse("empty-external_type") }
 
+  def getFileInitialCommentValue : Reader[io.circe.Json, String] =
+    Reader{ (json: io.circe.Json) ⇒ root.file.initial_comment.comment.string.getOption(json).getOrElse("empty-initial_comment") }
+
   def getSubtypeMessageValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.subtype.string.getOption(json).getOrElse("empty-message-subtype")}
 
