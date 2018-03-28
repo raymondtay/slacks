@@ -28,6 +28,8 @@ object Config {
   val teamInfoConfig : NonEmptyList[ConfigValidation] Either SlackTeamInfoConfig[String] = ConfigValidator.validateTeamInfoConfig(config.getConfig("slacks.api.team.info")).toEither
 
   val emojiListConfig : NonEmptyList[ConfigValidation] Either SlackEmojiListConfig[String] = ConfigValidator.validateEmojiListConfig(config.getConfig("slacks.api.emoji.list")).toEither
+
+  val usermentionBlacklistConfig : NonEmptyList[ConfigValidation] Either SlackBlacklistMessageForUserMentions = ConfigValidator.validateUserMentionConfig(config.getConfig("slacks.usermentions.blacklist")).toEither
 }
 
 sealed trait ConfigValidation {
@@ -45,6 +47,9 @@ case object MissingTimeoutKey extends ConfigValidation {
 case object MissingUrlKey extends ConfigValidation {
   def errorMessage = "key: 'url' is missing."
 }
+case object MissingUserMentionBlacklistKey extends ConfigValidation {
+  def errorMessage = "key: 'messagetypes' is missing."
+}
 case object MissingParamsKey extends ConfigValidation {
   def errorMessage = "key: 'params' is missing."
 }
@@ -58,6 +63,14 @@ case object ParametersMustConformToConvention extends ConfigValidation {
 
 sealed trait ConfigValidator {
   type ValidationResult[A] = ValidatedNel[ConfigValidation, A]
+
+  def validateUserMentionBlacklist(c: Config) : ValidationResult[List[String]] = {
+    import scala.collection.JavaConverters._
+    Try{c.getStringList("messagetypes").asScala.toList}.toOption match {
+      case Some(xs) ⇒ xs.map(_.trim).validNel
+      case None ⇒ MissingUserMentionBlacklistKey.invalidNel
+    }
+  }
 
   def validateParams(c: Config) : ValidationResult[List[ParamType[String]]] = {
     import scala.collection.JavaConverters._
@@ -107,7 +120,6 @@ sealed trait ConfigValidator {
 
 }
 
-// note: the client_id and client_secret_key should be 
 case class SlackCredentials(clientId: String, clientSecretKey: String)
 case class SlackUsersListConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackChannelListConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
@@ -118,8 +130,11 @@ case class SlackAuthScopeConfig[A](url : String, params : List[ParamType[A]], ti
 case class SlackAccessConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackTeamInfoConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
 case class SlackEmojiListConfig[A](url : String, params : List[ParamType[A]], timeout : Long)
+case class SlackBlacklistMessageForUserMentions(messagetypes: Set[String])
 
 object ConfigValidator extends ConfigValidator {
+
+  def validateUserMentionConfig(config: Config) = validateUserMentionBlacklist(config).map(xs ⇒ SlackBlacklistMessageForUserMentions(xs.toSet))
 
   def validateUsersListConfig(config: Config) = 
     (validateUrl(config),
