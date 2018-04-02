@@ -52,6 +52,8 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   import akka.pattern.{pipe}
   import context.dispatcher
 
+  import providers.slack.algebra.Messages
+
   type ReaderResponseEntity[A] = Reader[ResponseEntity, A]
   type ReaderBytes[A] = Reader[ByteString, A]
   type WriteLog[A] = Writer[String, A]
@@ -91,7 +93,17 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     botMessages.map{
       message ⇒
         val messageJ : io.circe.Json = Json.fromJsonObject(message)
-        Applicative[Id].map8( getMessageValue(messageJ), getUserIdValue(messageJ), getBotIdValue(messageJ), getTextValue(messageJ), Applicative[Id].pure(extractBotAttachments(message)), getTimestampValue(messageJ), Applicative[Id].pure(extractBotReactions(message)), Applicative[Id].pure(extractBotReplies(message)))(BotAttachmentMessage.apply)
+
+        Applicative[Id].map9(
+          getMessageValue(messageJ),
+          getUserIdValue(messageJ),
+          getBotIdValue(messageJ),
+          getTextValue(messageJ),
+          Applicative[Id].pure(extractBotAttachments(message)),
+          getTimestampValue(messageJ),
+          Applicative[Id].pure(extractBotReactions(message)),
+          Applicative[Id].pure(extractBotReplies(message)),
+          Applicative[Id].pure(Messages.getUserMentionsWhenRepliesOrReactionsPresent(messageJ)))(BotAttachmentMessage.apply)
     }
   }
 

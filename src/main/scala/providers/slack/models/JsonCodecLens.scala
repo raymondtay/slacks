@@ -33,6 +33,12 @@ object JsonCodecLens {
     Applicative[Id].map2(isSubtypeFieldPresent(json), isSubtypeMessageValueMatched(value)(json))(_ && _)
   }
 
+  def isRepliesFieldPresent : Reader[io.circe.Json, Boolean] =
+    Reader{(json: io.circe.Json) ⇒ root.replies.arr.getOption(json) != None }
+
+  def isReactionsFieldPresent : Reader[io.circe.Json, Boolean] =
+    Reader{(json: io.circe.Json) ⇒ root.reactions.arr.getOption(json) != None }
+
   def isUsernameFieldPresent : Reader[io.circe.Json, Boolean] =
     Reader{(json: io.circe.Json) ⇒ root.username.string.getOption(json) != None && root.username.string.exist(_ != "")(json) }
 
@@ -92,6 +98,12 @@ object JsonCodecLens {
 
   def getFileInitialCommentValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.file.initial_comment.comment.string.getOption(json).getOrElse("empty-initial_comment") }
+
+  def getFileCommentValue : Reader[io.circe.Json, String] =
+    Reader{ (json: io.circe.Json) ⇒ root.comment.comment.string.getOption(json).getOrElse("empty-file_comment") }
+
+  def getFileCommentUserValue : Reader[io.circe.Json, String] =
+    Reader{ (json: io.circe.Json) ⇒ root.comment.user.string.getOption(json).getOrElse("empty-file_user_comment") }
 
   def getSubtypeMessageValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.subtype.string.getOption(json).getOrElse("empty-message-subtype")}

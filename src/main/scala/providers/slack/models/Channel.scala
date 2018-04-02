@@ -63,7 +63,8 @@ case class BotAttachmentMessage(
   attachments: List[BotAttachment],
   ts: String,
   reactions: List[Reaction],
-  replies: List[Reply]) extends Serializable
+  replies: List[Reply],
+  mentions: List[String]) extends Serializable
 
 case class UserAttachmentMessage(
   `type`: String,
