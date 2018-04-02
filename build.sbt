@@ -43,3 +43,6 @@ libraryDependencies ++= (scalaBinaryVersion.value match {
     Nil
 })
 
+// All tests are run sequentially
+parallelExecution in Test := false
+
