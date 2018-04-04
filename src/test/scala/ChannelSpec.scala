@@ -107,11 +107,11 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
 
     implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
     import slacks.core.config.Config
-    (Config.channelReadConfig : @unchecked) match { // this tests the configuration loaded in application.conf
-      case Right(cfg) ⇒
+    ((Config.channelReadConfig : @unchecked, Config.usermentionBlacklistConfig : @unchecked) : @unchecked) match { // this tests the configuration loaded in application.conf
+      case (Right(cfg), Right(blacklistedCfg)) ⇒
         val (messages, logInfo) =
           Await.result(
-            ChannelConversationInterpreter.getChannelConversationHistory(channelId, cfg, new FakeChannelConversationHistoryHttpService).
+            ChannelConversationInterpreter.getChannelConversationHistory(channelId, cfg, blacklistedCfg, new FakeChannelConversationHistoryHttpService).
               runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "channels:history" :: Nil)).
               runWriter.
               runSequential, cfg.timeout second)
@@ -129,11 +129,11 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
 
     implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
     import slacks.core.config.Config
-    (Config.channelReadConfig : @unchecked) match { // this tests the configuration loaded in application.conf
-      case Right(cfg) ⇒
+    ((Config.channelReadConfig : @unchecked, Config.usermentionBlacklistConfig : @unchecked) : @unchecked) match { // this tests the configuration loaded in application.conf
+      case (Right(cfg), Right(blacklistedCfg)) ⇒
         val (messages, logInfo) =
           Await.result(
-            ChannelConversationInterpreter.getChannelConversationHistory(channelId, cfg, new FakeChannelConversationHistoryHttpServiceWhenRemoteIsDown).
+            ChannelConversationInterpreter.getChannelConversationHistory(channelId, cfg, blacklistedCfg, new FakeChannelConversationHistoryHttpServiceWhenRemoteIsDown).
               runReader(SlackAccessToken(Token("xoxp-","fake-slack-access-token"), "channels:history" :: Nil)).
               runWriter.
               runSequential, cfg.timeout second)
@@ -156,10 +156,11 @@ class ChannelSpec(implicit ee: ExecutionEnv) extends Specification with ScalaChe
 
     implicit val scheduler = ExecutorServices.schedulerFromScheduledExecutorService(ee.ses)
     import slacks.core.config.Config
-    (Config.channelReadConfig : @unchecked) match { // this tests the configuration loaded in application.conf
-      case Right(cfg) ⇒
+    ((Config.channelReadConfig : @unchecked, Config.usermentionBlacklistConfig : @unchecked) : @unchecked) match { // this tests the configuration loaded in application.conf
+      case (Right(cfg), Right(blacklistedCfg)) ⇒
         val (messageProcess, logs) =
             traceGetChannelConversationHistories(cfg,
+                                                 blacklistedCfg,
                                                  channelId,
                                                  new FakeChannelConversationHistoryHttpService,
                                                  message,

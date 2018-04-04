@@ -3,7 +3,7 @@ package providers.slack.algebra
 import cats._, data._, implicits._
 import slacks.core.parser.UserMentions.getUserIds
 import slacks.core.config.Config
-import providers.slack.models.JsonCodecLens._
+import providers.slack.models._
 
 /**
   * Contains the functions for 
@@ -29,14 +29,76 @@ trait CirceJsonImplicits {
 object Messages extends CirceJsonImplicits {
 
   import io.circe._, io.circe.syntax._, io.circe.generic.semiauto._
+  import JsonCodecLens._
+  import JsonCodec.slackReactionDec
+  import org.slf4j.{Logger, LoggerFactory}
+
+  private val logger = LoggerFactory.getLogger(getClass)
+
+  /** 
+    * Mined the `file_comment` messages looking for user-mentions in
+    * `reactions` and `comment` fields of the target json
+    * @param json 
+    * @return an object that reflects the transformed slack message of subtype:`file_comment`
+    */
+  def getUserMentionsInFileComments : Reader[io.circe.Json, FileComment] = Reader { (json: io.circe.Json) ⇒
+    import io.circe.optics.JsonPath._ // using optics
+    var fileCommentMessage =
+      FileComment("message", "file_comment", "", "", "", List.empty[String], List.empty[Reaction])
+
+    if (isReactionsFieldPresentInComment(json)) {
+      fileCommentMessage = fileCommentMessage.copy(
+        reactions = 
+        root.reactions.arr.getOption(json) match {
+          case Some(xs:Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[Reaction].getOrElse(Reaction("",Nil))).toList
+          case None ⇒ List.empty[Reaction]
+        })
+    }
+
+    fileCommentMessage = fileCommentMessage.copy( text     = getTextValue(json) )
+    fileCommentMessage = fileCommentMessage.copy( user     = getFileCommentUserValue(json) )
+    fileCommentMessage = fileCommentMessage.copy( mentions = extractFileCommentUserMentions(json) )
+    fileCommentMessage = fileCommentMessage.copy( comment  = getFileCommentValue(json) )
+    fileCommentMessage
+  }
+
+  /**
+    * Parses the `file_share` message looking for values nested within the
+    * `initial_comment` object. In either case, we return a `UserFileComment`
+    * object
+    * @param json json object enclosing `file_share`
+    * @return UserFileComment object
+    */
+  def getFileInitialCommentInFileShareMessage : Reader[io.circe.Json, Option[UserFileComment]] = Reader { (json: io.circe.Json) ⇒
+    import io.circe.optics.JsonPath._ // using optics
+
+    getFileInitialCommentObjectValue(json)  match {
+      case Left(v)  ⇒ 
+        logger.warn("[getFileInitialComment] Error in decoding received json object for 'initial_comment'")       
+        none
+      case Right(v) ⇒
+        logger.info("[getFileInitialComment] OK in decoding received json object for 'initial_comment'")       
+        v.some
+    }
+  }
 
   /**
     * Get user mentions iff either `replies` or `reactions` is present
     * @param json json object
     * @return empty list or a container with user-ids
     */
-  def getUserMentionsWhenRepliesOrReactionsPresent = Reader{ (json: io.circe.Json) ⇒
+  def getUserMentionsWhenRepliesOrReactionsPresent : Reader[io.circe.Json, List[String]] = Reader{ (json: io.circe.Json) ⇒
     if (isRepliesFieldPresent(json) || isReactionsFieldPresent(json))
+      Messages.findUserMentions(json) else List.empty[String]
+  }
+
+  /**
+    * Get user mentions when neither `replies` nor `reactions` is present
+    * @param json json object
+    * @return empty list or a container with user-ids
+    */
+  def getUserMentionsWhenRepliesNOrReactionsPresent : Reader[io.circe.Json, List[String]] = Reader{ (json: io.circe.Json) ⇒
+    if (isRepliesFieldPresent(json) && !isReactionsFieldPresent(json))
       Messages.findUserMentions(json) else List.empty[String]
   }
 
@@ -50,6 +112,17 @@ object Messages extends CirceJsonImplicits {
       (extractUserMentions(json),
        extractFileShareUserMentions(json),
        extractFileCommentUserMentions(json)).mapN{(a, b, c) ⇒ a |+| b |+| c }
+  }
+
+  /**
+    * Injects the "target" json to the "source" json with the given keyname (as in "key")
+    * @param key name of key
+    * @param target json value to be associated with 'key'
+    * @param source json value where key → value pair to be injected
+    * @return the injected json
+    */
+  def inject(key: String)(target: io.circe.Json) : Reader[Json, Json] = Reader{ (source: io.circe.Json) ⇒ 
+    source.mapObject((s: io.circe.JsonObject) ⇒ s.add(key, target))
   }
 
   /**

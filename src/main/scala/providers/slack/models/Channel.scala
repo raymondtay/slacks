@@ -73,7 +73,8 @@ case class UserAttachmentMessage(
   attachments: List[io.circe.Json],
   ts: String,
   reactions: List[Reaction],
-  replies: List[Reply]) extends Serializable
+  replies: List[Reply],
+  mentions : List[String]) extends Serializable
 
 case class UserFileShareMessage(
   `type`: String,
@@ -83,7 +84,8 @@ case class UserFileShareMessage(
   comments : List[UserFileComment], 
   user : String,
   bot_id : String,
-  ts: String
+  ts: String,
+  mentions : List[String]
 ) extends Serializable
 
 case class UserFile(
@@ -98,8 +100,7 @@ case class UserFile(
   mimetype : String,
   permalink : String,
   created : Long,
-  mode : String,
-  mentions : List[String]
+  mode : String
 ) extends Serializable
 
 case class UserFileComment(
@@ -107,3 +108,14 @@ case class UserFileComment(
   timestamp : Long,
   user : String
 ) extends Serializable
+
+case class FileComment(
+  `type`: String,
+  subtype : String,
+  text : String,
+  user : String,
+  comment : String,
+  mentions : List[String],
+  reactions : List[Reaction]
+) extends Serializable
+

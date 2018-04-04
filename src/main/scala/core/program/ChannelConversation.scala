@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import providers.slack.algebra._
 import providers.slack.models._
 import slacks.core.program.supervisor.SupervisorRestartN
-import slacks.core.config.{SlackChannelReadConfig}
+import slacks.core.config.{SlackBlacklistMessageForUserMentions, SlackChannelReadConfig}
 
 import akka.actor._
 import akka.http.scaladsl.{Http, HttpExt}
@@ -62,11 +62,13 @@ object ChannelConversationInterpreter {
     *
     * @param channelId
     * @param config
+    * @param blacklistCfg used for data processing of white-listed message types
     * @param token
     * @param httpService
     */
   private def getChannelConversationHistoryFromSlack(channelId: ChannelId, 
                                                      cfg: SlackChannelReadConfig[String], 
+                                                     blacklistCfg: SlackBlacklistMessageForUserMentions,
                                                      token: SlackAccessToken[String],
                                                      httpService : HttpService)(implicit actorSystem : ActorSystem, actorMat: ActorMaterializer) = {
     import akka.pattern.{ask, pipe}
@@ -76,7 +78,7 @@ object ChannelConversationInterpreter {
 
     val supervisor = actorSystem.actorOf(Props[SupervisorRestartN], s"supervisorRestartN_${java.util.UUID.randomUUID.toString}")
     implicit val createActorTimeout = Timeout(3 seconds)
-    val actor = Await.result((supervisor ? Props(new SlackConversationHistoryActor(channelId, cfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
+    val actor = Await.result((supervisor ? Props(new SlackConversationHistoryActor(channelId, cfg, blacklistCfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
     val timeout = Timeout(cfg.timeout seconds)
     futureDelay[Stack, SievedMessages](
       Await.result((actor ? GetConversationHistory).mapTo[SievedMessages], timeout.duration)
@@ -94,16 +96,18 @@ object ChannelConversationInterpreter {
     * 
     * We leverage the conversation APIs in Slack 
     * @param cfg configuration
+    * @param blacklistCfg used for data processing of white-listed message types
     * @param token slack token
     * @param httpService 
     */
   def getChannelConversationHistory(channelId: ChannelId,
                                     cfg: SlackChannelReadConfig[String], 
+                                    blacklistCfg: SlackBlacklistMessageForUserMentions,
                                     httpService : HttpService)(implicit actorSystem:
                                     ActorSystem, actorMat: ActorMaterializer) : Eff[Stack, SievedMessages] = for {
     token    <- ask[Stack, SlackAccessToken[String]]
     _        <- tell[Stack, String]("[Get-Channel-Conversation-History] Slack access token retrieved.")
-    messages <- getChannelConversationHistoryFromSlack(channelId, cfg, token, httpService)   
+    messages <- getChannelConversationHistoryFromSlack(channelId, cfg, blacklistCfg, token, httpService)   
     _        <- tell[Stack, String]("[Get-Channel-Conversation-History] Slack channel(s) info retrieved.")
   } yield messages
 
@@ -160,11 +164,13 @@ object ChannelConversationInterpreter {
     * This action is traced via OpenTracing. See http://opentracing.io
     *
     * @param cfg configuration
+    * @param blacklistCfg used for data processing of white-listed message types
     * @param token slack token
     * @param message a map of (k,v) pairs to be passed for tracing 
     * @param httpService
     */
   def traceGetChannelConversationHistories(cfg: SlackChannelReadConfig[String],
+                               blacklistCfg: SlackBlacklistMessageForUserMentions,
                                channelId: String,
                                httpService : HttpService,
                                message : slacks.core.tracer.Message, 
@@ -173,7 +179,7 @@ object ChannelConversationInterpreter {
   for {
     tracer  <- ask[ChannelHistoryStack, io.opentracing.Tracer].into[ChannelHistoryStack]
     _       <- tell[ChannelHistoryStack,String](s"Got the tracer from the context.").into[ChannelHistoryStack]
-    result  <- traceEffect(getChannelConversationHistory(channelId, cfg, httpService).runReader(token).runWriter.runSequential)(message).into[ChannelHistoryStack]
+    result  <- traceEffect(getChannelConversationHistory(channelId, cfg, blacklistCfg, httpService).runReader(token).runWriter.runSequential)(message).into[ChannelHistoryStack]
   } yield result
 
 }

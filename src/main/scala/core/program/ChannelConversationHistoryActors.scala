@@ -23,6 +23,7 @@ import scala.concurrent.duration._
   *
   * @param channelid the id of the channel you are interested in
   * @param cfg  the configuration object
+  * @param blacklistCfg  the configuration object that holds the blacklisted message types
   * @param token the slack access token
   * @param httpService
   */
@@ -30,13 +31,16 @@ import scala.concurrent.duration._
 case class SievedMessages(
   botMessages : List[BotAttachmentMessage],
   userAttachmentMessages: List[UserAttachmentMessage],
-  userFileShareMessages : List[UserFileShareMessage]
+  userFileShareMessages : List[UserFileShareMessage],
+  fileCommentMessages : List[FileComment],
+  whitelistedMessages : List[io.circe.Json]
 ) extends Serializable
 
 case object GetConversationHistory
 
 class SlackConversationHistoryActor(channelId: ChannelId,
                                     cfg : SlackChannelReadConfig[String],
+                                    blConfig : slacks.core.config.SlackBlacklistMessageForUserMentions,
                                     token : SlackAccessToken[String],
                                     httpService : HttpService)(implicit aS: ActorSystem, aM: ActorMaterializer) extends Actor with ActorLogging {
   import cats._, data._, implicits._
@@ -64,7 +68,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
   implicit val http = Http(context.system)
   private val defaultUri = s"${cfg.url}?channel=${channelId}&token=${Monoid[String].combine(token.access_token.prefix, token.access_token.value)}&limit=1000"
   private def continuationUri = (cursor:String) ⇒ defaultUri + s"&limit=1000&cursor=${cursor}"
-  private var localStorage : SievedMessages = SievedMessages(Nil, Nil, Nil)
+  private var localStorage : SievedMessages = SievedMessages(Nil, Nil, Nil, Nil, Nil)
   private val cursorState : Cursor = Cursor("")
 
   override def preStart() = {
@@ -77,14 +81,18 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     _      <- tell[S1, String]("[Get-Channel-History-Actor] Collected the http entity.")
   } yield entity.dataBytes.runFold(ByteString(""))(_ ++ _)
 
-  // Using Scala Lens, we sieve out the bot-specific data
-  // bearing in mind that bot messages carrying attachments might have the
-  // following condition:
-  // (a) if "reactions" is present then its either an empty [] or [value,
-  //     value...] and not to mention that "subtype" is absent too. That's
-  //     confusing to say the least....
-  // (b) "reactions" can be absent
-  //
+  /**
+    * Using Scala Lens, we sieve out the bot-specific data
+    * bearing in mind that bot messages carrying attachments might have the
+    * following condition:
+    * (a) if "reactions" is present then its either an empty [] or [value,
+    *     value...] and not to mention that "subtype" is absent too. That's
+    *     confusing to say the least....
+    * (b) "reactions" can be absent
+    *
+    * @param json messages from slack
+    * @return all messages of type 'bot_message'
+    */
   val findAllBotMessages : Kleisli[List, io.circe.Json, BotAttachmentMessage] = Kleisli{ (json: io.circe.Json) ⇒
     import JsonCodecLens._
     val botMessages =
@@ -99,15 +107,20 @@ class SlackConversationHistoryActor(channelId: ChannelId,
           getUserIdValue(messageJ),
           getBotIdValue(messageJ),
           getTextValue(messageJ),
-          Applicative[Id].pure(extractBotAttachments(message)),
+          extractBotAttachments(message),
           getTimestampValue(messageJ),
-          Applicative[Id].pure(extractBotReactions(message)),
-          Applicative[Id].pure(extractBotReplies(message)),
-          Applicative[Id].pure(Messages.getUserMentionsWhenRepliesOrReactionsPresent(messageJ)))(BotAttachmentMessage.apply)
+          extractBotReactions(message),
+          extractBotReplies(message),
+          Messages.getUserMentionsWhenRepliesOrReactionsPresent(messageJ))(BotAttachmentMessage.apply)
     }
   }
 
-  // Locates all messages sent by regular slack users (i.e. non-bots) 
+  /**
+    * Locates all messages sent by regular slack users (i.e. non-bots) and has
+    * no json field: 'subtype' present
+    * @param json slack messages
+    * @return container of user attachment message if any else an empty container
+    */
   val findAllUserAttachmentMessages : Kleisli[List, io.circe.Json, UserAttachmentMessage] = Kleisli{ (json : io.circe.Json) ⇒
     import JsonCodecLens._
     val userMessagesWithAttachments =
@@ -118,12 +131,24 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     userMessagesWithAttachments.map{
       message ⇒
         val messageJ : io.circe.Json = Json.fromJsonObject(message)
-        Applicative[Id].map7(getMessageValue(messageJ), getUserIdValue(messageJ), getTextValue(messageJ), Applicative[Id].pure(extractUserAttachments(message)), getTimestampValue(messageJ), Applicative[Id].pure(extractUserReactions(message)), Applicative[Id].pure(extractUserReplies(message)))(UserAttachmentMessage.apply)
+        Applicative[Id].map8(
+          getMessageValue(messageJ),
+          getUserIdValue(messageJ),
+          getTextValue(messageJ),
+          extractUserAttachments(message),
+          getTimestampValue(messageJ),
+          extractUserReactions(message),
+          extractUserReplies(message),
+          Messages.getUserMentionsWhenRepliesOrReactionsPresent(messageJ))(UserAttachmentMessage.apply)
     }
   }
 
-  // Parses the comments in the json structure looking for the matching file
-  // comments
+  /**
+    * Parses the comments in the json structure looking for the matching file comments
+    * @param fileId each message of `file_share` has a file's id associated
+    * @param json message where subtype is `file_comment`
+    * @return a container of comments associated with the given file's id
+    */
   def getFileComments(fileId: String) : Kleisli[List, io.circe.Json, UserFileComment] = Kleisli{ (json: io.circe.Json) ⇒
     import JsonCodecLens._
     val matchedCommentsForFile =
@@ -142,12 +167,19 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     }
   }
 
-  // Locate all messages that are shared by regular slack users (i.e. non-bots)
-  val findAllSharedFileContentByUsers : Kleisli[List, io.circe.Json, UserFileShareMessage] = Kleisli{ (json: io.circe.Json) ⇒
+  /**
+    * Locate all 'file_share' messages that are shared by regular slack users (i.e. non-bots)
+    * @param json slack messages
+    * @return a container of UserFileShareMessages or an empty container
+    */
+  val findAllSharedFileContentOfNonBotUsers : Kleisli[List, io.circe.Json, UserFileShareMessage] = Kleisli{ (json: io.circe.Json) ⇒
     import JsonCodecLens._
     val sharedFileMessages =
       root.messages.each.filter{ (j: io.circe.Json) ⇒
-        Applicative[Id].map4(isMessagePresentNMatched(j), isSubtypePresentNMatched("file_share")(j), isFileFieldPresent(j), isUsernameFieldPresent(j))(_ && _ && _ && _)
+        Applicative[Id].map4(isMessagePresentNMatched(j),
+                             isSubtypePresentNMatched("file_share")(j),
+                             isFileFieldPresent(j),
+                             isUsernameFieldPresent(j))(_ && _ && _ && _)
       }.obj.getAll(json)
 
     import slacks.core.parser.UserMentions
@@ -155,7 +187,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     sharedFileMessages.map{
       fileMessage ⇒
         val j : io.circe.Json = Json.fromJsonObject(fileMessage)
-        val userFile : UserFile = Applicative[Id].map13(
+        val userFile : UserFile = Applicative[Id].map12(
           getFileTypeValue(j),
           getFileIdValue(j),
           getFileTitleValue(j),
@@ -167,17 +199,27 @@ class SlackConversationHistoryActor(channelId: ChannelId,
           getFileMimeTypeValue(j),
           getPermalinkValue(j),
           getFileCreatedValue(j),
-          getFileModeValue(j), 
-          UserMentions.getUserIds(getFileInitialCommentValue(j)))(UserFile.apply)
+          getFileModeValue(j))(UserFile.apply)
 
-        Applicative[Id].map8(getMessageValue(j), getSubtypeMessageValue(j),
-                             getTextValue(j), userFile,
-                             Applicative[Id].pure(getFileComments(getFileIdValue(j))(json)), getUserIdValue(j),
-                             getBotIdValue(j), getTimestampValue(j))(UserFileShareMessage.apply)
+        Applicative[Id].map9(getMessageValue(j),
+                             getSubtypeMessageValue(j),
+                             getTextValue(j),
+                             userFile,
+                             Messages.getFileInitialCommentInFileShareMessage(j).
+                               fold(getFileComments(getFileIdValue(j))(json))
+                                   (fileComment ⇒ getFileComments(getFileIdValue(j))(json) :+ fileComment),
+                             getUserIdValue(j),
+                             getBotIdValue(j),
+                             getTimestampValue(j),
+                             Messages.getUserMentionsWhenRepliesOrReactionsPresent(j))(UserFileShareMessage.apply)
     }
   }
 
-  // Extract the bot's "replies" from the json object
+  /**
+    * Extract the bot's "replies" from the json object
+    * @param json 
+    * @return empty container or a container of bot replies
+    */
   val extractBotReplies : Kleisli[List, io.circe.JsonObject, Reply] = Kleisli{ (o: io.circe.JsonObject) ⇒
     import JsonCodec.slackReplyDec
     val json : io.circe.Json = Json.fromJsonObject(o)
@@ -224,25 +266,92 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     root.response_metadata.next_cursor.string.getOption(json)
   }
 
+  /**
+    * Mines the `file_comment` messages looking for what makes a notable message.
+    * @param json the root json object
+    */
+  val findNotableMessagesInFileComments = Kleisli{ (json: io.circe.Json) ⇒
+    import JsonCodecLens._
+    val fileCommentMessages =
+      root.messages.each.filter{ (j: io.circe.Json) ⇒
+        Applicative[Id].map2(isMessagePresentNMatched(j), isSubtypePresentNMatched("file_comment")(j))(_ && _)
+      }.obj.getAll(json)
+
+    fileCommentMessages.map{
+      message ⇒
+        val messageJ : io.circe.Json = Json.fromJsonObject(message)
+        Messages.getUserMentionsInFileComments(messageJ)
+    }
+  }
+
+  /**
+    * Discover all user-mentions in the stockpile of json objects and to
+    * prevent us from iterating through message types where we have already
+    * processed before, we make use of `messageTypesToBeExcluded` (see Slack's
+    * API message types for details.)
+    * @param messageTypesToBeExcluded  e.g. ["file_share", "file_comment", "bot_message"]
+    * @param blConfig configuration containing all blacklisted message types
+    * @param json json object
+    * @return an empty container or a container of jsons with a extra field named 'mentions'
+    */
+  def findNotableMessagesInWhiteListedSlackMessages(messageTypesToBeExcluded : List[String],
+                                                    blacklistedMessages : slacks.core.config.SlackBlacklistMessageForUserMentions) = Kleisli{ (json: io.circe.Json) ⇒
+    import JsonCodecLens._
+
+    val blacklistedMessageTypes : Set[String] = blacklistedMessages.messagetypes ++ messageTypesToBeExcluded
+    val wlMessages =
+      root.messages.each.filter{ (j: io.circe.Json) ⇒
+        Applicative[Id].map2(isMessagePresentNMatched(j), ! blacklistedMessageTypes.contains(getSubtypeMessageValue(j)))(_ && _)
+      }.obj.getAll(json)
+
+    val transformedJsons =
+      wlMessages.map{
+        message ⇒
+          val messageJ : io.circe.Json = Json.fromJsonObject(message)
+          ( Messages.getUserMentionsWhenRepliesNOrReactionsPresent(messageJ),
+            Messages.getUserMentionsWhenRepliesOrReactionsPresent(messageJ) ) match {
+            case (usermentions, Nil) ⇒ Messages.inject("mentions")(Json.arr(usermentions.map(Json.fromString(_)):_*)).run(messageJ)
+            case (Nil, usermentions) ⇒ Messages.inject("mentions")(Json.arr(usermentions.map(Json.fromString(_)):_*)).run(messageJ)
+            case _ ⇒ Json.Null
+          } 
+      }
+    transformedJsons.filter(_ != Json.Null)
+  }
+
   //
   // Decode the JSON structure and sieve for data we are interested in
   // and the local state is updated while we push on with the data.
   //
-  val sieveJsonAndNextCursor : Eff[S2, Option[String]] = for {
-    datum       <- ask[S2, ByteString]
-     _          <- tell[S2, String]("[Get-Channel-History-Actor] Collected the json data from ctx.")
-    json        <- values[S2, List[io.circe.Json]](parse(datum.utf8String).getOrElse(Json.Null) :: Nil)
-     _          <- tell[S2, String]("[Get-Channel-History-Actor] Converted the data to a json string.")
-    botData     <- values[S2, List[BotAttachmentMessage]](findAllBotMessages(json head))
-     _          <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for bot messages.")
-    userAttData <- values[S2, List[UserAttachmentMessage]](findAllUserAttachmentMessages(json head))
-     _          <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for user attachment messages.")
-    userFSData  <- values[S2, List[UserFileShareMessage]](findAllSharedFileContentByUsers(json head))
-     _          <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for file-share messages.")
-    cursor      <- fromOption[S2, String](getNextPage(json head))
-     _          <- tell[S2, String]("[Get-Channel-History-Actor] Processed json data for next-cursor.")
-     _          <- modify[S2, SievedMessages]((m:SievedMessages) ⇒ {localStorage = m.copy(botMessages = m.botMessages ++ botData, userAttachmentMessages = m.userAttachmentMessages ++ userAttData, userFileShareMessages = m.userFileShareMessages ++ userFSData); localStorage})
-  } yield cursor.some
+  def sieveJsonAndNextCursor : Eff[S2, Option[String]] = {
+    val excludedMessageTypes = List("file_share", "file_comment", "bot_message")
+
+    for {
+      datum            ← ask[S2, ByteString]
+       _               ← tell[S2, String]("[Get-Channel-History-Actor] Collected the json data from ctx.")
+      json             ← values[S2, List[io.circe.Json]](parse(datum.utf8String).getOrElse(Json.Null) :: Nil)
+       _               ← tell[S2, String]("[Get-Channel-History-Actor] Converted the data to a json string.")
+      botData          ← values[S2, List[BotAttachmentMessage]](findAllBotMessages(json head))
+       _               ← tell[S2, String]("[Get-Channel-History-Actor] Processed json data for bot messages.")
+      userAttData      ← values[S2, List[UserAttachmentMessage]](findAllUserAttachmentMessages(json head))
+       _               ← tell[S2, String]("[Get-Channel-History-Actor] Processed json data for user attachment messages.")
+      userFSData       ← values[S2, List[UserFileShareMessage]](findAllSharedFileContentOfNonBotUsers(json head))
+       _               ← tell[S2, String]("[Get-Channel-History-Actor] Processed json data for file-share messages.")
+      fileCommentData  ← values[S2, List[FileComment]](findNotableMessagesInFileComments(json head))
+       _               ← tell[S2, String]("[Get-Channel-History-Actor] Processed json data for file-comment messages.")
+      rest             ← values[S2, List[io.circe.Json]](findNotableMessagesInWhiteListedSlackMessages(excludedMessageTypes, blConfig)(json head))
+       _               ← tell[S2, String](s"[Get-Channel-History-Actor] Processed json data for message types not in ${excludedMessageTypes.mkString(",")}.")
+      cursor           ← fromOption[S2, String](getNextPage(json head))
+       _               ← tell[S2, String]("[Get-Channel-History-Actor] Processed json data for next-cursor.")
+       _               ← modify[S2, SievedMessages]((m:SievedMessages) ⇒ 
+                     {localStorage =
+                        m.copy(botMessages            = m.botMessages ++ botData,
+                               userAttachmentMessages = m.userAttachmentMessages ++ userAttData,
+                               userFileShareMessages  = m.userFileShareMessages ++ userFSData,
+                               fileCommentMessages    = m.fileCommentMessages ++ fileCommentData,
+                               whitelistedMessages    = m.whitelistedMessages ++ rest); localStorage})
+    } yield cursor.some
+
+  }
 
   def receive = {
     /* According to Slack Rate-limiting API, we should throttle our requests

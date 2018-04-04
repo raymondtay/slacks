@@ -70,31 +70,6 @@ object JsonCodec {
   implicit val slackUsersEnc : Encoder[Users] = deriveEncoder[Users]
   implicit val slackUserFileCommentDec : Decoder[UserFileComment] = deriveDecoder[UserFileComment]
   implicit val slackUserFileCommentEnc : Encoder[UserFileComment] = deriveEncoder[UserFileComment]
-  implicit val slackUserFileEnc : Encoder[UserFile] = new Encoder[UserFile] {
-    final def apply(a: UserFile) : Json = {
-      val r =
-      Array(("mode", Json.fromString(a.mode)),
-            ("mentions", Json.arr(a.mentions.map(uid ⇒ Json.fromString(uid)) : _*)))
-      Json.obj(
-        ("filetype",      Json.fromString(a.filetype)),
-        ("id",            Json.fromString(a.id)),
-        ("title",         Json.fromString(a.title)),
-        ("url_private",   Json.fromString(a.url_private)),
-        ("external_type", Json.fromString(a.external_type)),
-        ("timestamp",     Json.fromLong(a.timestamp)),
-        ("pretty_type",   Json.fromString(a.pretty_type)),
-        ("name",          Json.fromString(a.name)),
-        ("mimetype",      Json.fromString(a.mimetype)),
-        ("permalink",     Json.fromString(a.permalink)),
-        ("created",       Json.fromLong(a.created)),
-        if (a.mentions.isEmpty) r(0)
-        else {
-          r(0)
-          r(1)
-        }
-      )
-    }
-  }
   implicit val slackMessages : Decoder[SlackMessage] = deriveDecoder[SlackMessage]
 
   implicit val slackTeamDec : Decoder[Team] = deriveDecoder[Team]

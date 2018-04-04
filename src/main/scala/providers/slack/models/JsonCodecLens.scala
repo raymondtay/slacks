@@ -96,6 +96,19 @@ object JsonCodecLens {
   def getFileExternalTypeValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.file.external_type.string.getOption(json).getOrElse("empty-external_type") }
 
+  def getFileInitialCommentObjectValue : Reader[io.circe.Json, Either[io.circe.DecodingFailure,UserFileComment]] =
+    Reader{ (json: io.circe.Json) ⇒ root.file.initial_comment.obj.getOption(json) match {
+      case None       ⇒ io.circe.DecodingFailure("Did not discover nested json object 'initial_comment'", ops = Nil).asLeft
+      case Some(jObj) ⇒ 
+        val initialFileComment = io.circe.Json.fromJsonObject(jObj)
+        val cursor = initialFileComment.hcursor
+        for {
+          id   ← Monad[Id].pure(cursor.getOrElse("id")(""))
+          ts   ← Monad[Id].pure(cursor.getOrElse("timestamp")(0L))
+          user ← Monad[Id].pure(cursor.getOrElse("user")(""))
+        } yield UserFileComment(id, ts , user)
+    }}
+
   def getFileInitialCommentValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.file.initial_comment.comment.string.getOption(json).getOrElse("empty-initial_comment") }
 
@@ -104,6 +117,9 @@ object JsonCodecLens {
 
   def getFileCommentUserValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.comment.user.string.getOption(json).getOrElse("empty-file_user_comment") }
+
+  def isReactionsFieldPresentInComment : Reader[io.circe.Json, Boolean] =
+    Reader{(json: io.circe.Json) ⇒ root.comment.reactions.arr.getOption(json) != None }
 
   def getSubtypeMessageValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.subtype.string.getOption(json).getOrElse("empty-message-subtype")}
