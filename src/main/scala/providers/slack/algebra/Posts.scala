@@ -44,7 +44,7 @@ object Messages extends CirceJsonImplicits {
   def getUserMentionsInFileComments : Reader[io.circe.Json, FileComment] = Reader { (json: io.circe.Json) ⇒
     import io.circe.optics.JsonPath._ // using optics
     var fileCommentMessage =
-      FileComment("message", "file_comment", "", "", "", List.empty[String], List.empty[Reaction])
+      FileComment("message", "file_comment", "", "", "", List.empty[String], List.empty[Reaction], "")
 
     if (isReactionsFieldPresentInComment(json)) {
       fileCommentMessage = fileCommentMessage.copy(
@@ -59,6 +59,7 @@ object Messages extends CirceJsonImplicits {
     fileCommentMessage = fileCommentMessage.copy( user     = getFileCommentUserValue(json) )
     fileCommentMessage = fileCommentMessage.copy( mentions = extractFileCommentUserMentions(json) )
     fileCommentMessage = fileCommentMessage.copy( comment  = getFileCommentValue(json) )
+    fileCommentMessage = fileCommentMessage.copy( ts       = getTimestampValue(json) )
     fileCommentMessage
   }
 

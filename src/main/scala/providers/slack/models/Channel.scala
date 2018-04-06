@@ -116,6 +116,7 @@ case class FileComment(
   user : String,
   comment : String,
   mentions : List[String],
-  reactions : List[Reaction]
+  reactions : List[Reaction],
+  ts : String
 ) extends Serializable
 
