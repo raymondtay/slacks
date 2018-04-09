@@ -60,7 +60,7 @@ object TeamInfoInterpreter {
     val timeout = Timeout(cfg.timeout seconds)
     futureDelay[Stack, (TeamId, io.circe.Json)](
       Await.result((actor ? GetTeamInfo).mapTo[(TeamId, io.circe.Json)], timeout.duration)
-    ).retryUntil(s ⇒ s._2 != io.circe.Json.Null, List(cfg.timeout / 2).map(t ⇒ Timeout(t.seconds).duration))
+    )
   }
 
   /**
@@ -93,7 +93,7 @@ object TeamInfoInterpreter {
     val timeout = Timeout(cfg.timeout seconds)
     futureDelay[Stack, io.circe.Json](
       Await.result((actor ? GetTeamEmoji).mapTo[io.circe.Json], timeout.duration)
-    ).retryUntil(s ⇒ s != io.circe.Json.Null, List(cfg.timeout / 2).map(t ⇒ Timeout(t.seconds).duration))
+    )
   }
 
   /**

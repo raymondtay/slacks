@@ -60,7 +60,7 @@ object ChannelsInterpreter {
     val timeout = Timeout(cfg.timeout seconds)
     futureDelay[Stack, Storage](
       Await.result((actor ? GetChannelListing).mapTo[Storage], timeout.duration)
-    ).retryUntil( s ⇒  s.xs.size > 0, List(cfg.timeout / 2).map(t ⇒ Timeout(t.seconds).duration))
+    )
   }
  
   /** 

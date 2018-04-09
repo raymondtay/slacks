@@ -73,7 +73,7 @@ object UsersInterpreter {
     val timeout = Timeout(cfg.timeout seconds)
     futureDelay[GetUsersStack, UserList](
       Await.result((actor ? GetUsers).mapTo[UserList], timeout.duration)
-    ).retryUntil(s ⇒ s.users.size > 0, List(cfg.timeout / 2).map(t ⇒ Timeout(t.seconds).duration))
+    )
   }
 
 }
