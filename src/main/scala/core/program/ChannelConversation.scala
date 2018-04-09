@@ -46,7 +46,7 @@ object ChannelConversationInterpreter {
     val timeout = Timeout(cfg.timeout seconds)
     futureDelay[Stack, Messages](
       Await.result((actor ? GetChannelHistory).mapTo[Messages], timeout.duration)
-    )
+    ).retryUntil(s ⇒ s.xs.size > 0, List(cfg.timeout / 2).map(t ⇒ Timeout(t.seconds).duration))
   }
  
    /**
@@ -82,6 +82,11 @@ object ChannelConversationInterpreter {
     val timeout = Timeout(cfg.timeout seconds)
     futureDelay[Stack, SievedMessages](
       Await.result((actor ? GetConversationHistory).mapTo[SievedMessages], timeout.duration)
+    ).retryUntil(
+      s ⇒ 
+        Monoid[Int].combine(s.botMessages.size,
+          Monoid[Int].combine(s.userFileShareMessages.size, s.userAttachmentMessages.size)) > 0,
+        List(cfg.timeout / 2).map(t ⇒ Timeout(t.seconds).duration)
     )
   }
  
