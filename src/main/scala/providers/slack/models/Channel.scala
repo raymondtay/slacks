@@ -100,7 +100,10 @@ case class UserFile(
   mimetype : String,
   permalink : String,
   created : Long,
-  mode : String
+  mode : String,
+  thumb_360 : Option[Int],
+  thumb_pdf : Option[String],
+  thumb_video : Option[String]
 ) extends Serializable
 
 case class UserFileComment(

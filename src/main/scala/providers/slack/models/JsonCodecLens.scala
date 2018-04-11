@@ -90,6 +90,15 @@ object JsonCodecLens {
   def getFilePrettyTypeValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.file.pretty_type.string.getOption(json).getOrElse("empty-file-pretty_type")}
 
+  def getFileThumb360Value : Reader[io.circe.Json, Option[Int]] =
+    Reader{ (json: io.circe.Json) ⇒ root.file.thumb_360.int.getOption(json)}
+
+  def getFileThumbPDFValue : Reader[io.circe.Json, Option[String]] =
+    Reader{ (json: io.circe.Json) ⇒ root.file.thumb_pdf.string.getOption(json)}
+
+  def getFileThumbVideoValue : Reader[io.circe.Json, Option[String]] =
+    Reader{ (json: io.circe.Json) ⇒ root.file.thumb_video.string.getOption(json)}
+
   def getFileModeValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.file.mode.string.getOption(json).getOrElse("empty-file-mode")}
 

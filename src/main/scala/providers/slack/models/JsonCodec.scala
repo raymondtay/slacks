@@ -75,6 +75,30 @@ object JsonCodec {
   implicit val slackTeamDec : Decoder[Team] = deriveDecoder[Team]
   implicit val slackEmojiDec : Decoder[Emoji] = deriveDecoder[Emoji]
 
+  implicit val slackUserFileEnc: Encoder[UserFile] = new Encoder[UserFile] {
+    final def apply(c: UserFile): Json = {
+      var baseJsonObject : Option[JsonObject] =
+        Json.obj(
+          ("filetype", Json.fromString(c.filetype)),
+          ("id" , Json.fromString(c.id)),
+          ("title" , Json.fromString(c.title)),
+          ("url_private" , Json.fromString(c.url_private)),
+          ("external_type" , Json.fromString(c.external_type)),
+          ("timestamp", Json.fromLong(c.timestamp)), 
+          ("pretty_type" , Json.fromString(c.pretty_type)),
+          ("name" , Json.fromString(c.name)),
+          ("mimetype" , Json.fromString(c.mimetype)),
+          ("permalink" , Json.fromString(c.permalink)),
+          ("created", Json.fromLong(c.created)),
+          ("mode" , Json.fromString(c.mode))).asObject
+
+      baseJsonObject = baseJsonObject.map(base ⇒ c.thumb_360.fold(base)(t ⇒ base.add("thumb_360", Json.fromInt(t))))
+      baseJsonObject = baseJsonObject.map(base ⇒ c.thumb_pdf.fold(base)(t ⇒ base.add("thumb_pdf", Json.fromString(t))))
+      baseJsonObject = baseJsonObject.map(base ⇒ c.thumb_video.fold(base)(t ⇒ base.add("thumb_video", Json.fromString(t))))
+      baseJsonObject.fold(Json.Null)(Json.fromJsonObject(_))
+    }
+ }
+
   /* This pattern is useful when merging different jsons into a model where you need
    * something from `a` which cannot be found in `b` but neither `a` or `b` can
    * fullfill those requirements

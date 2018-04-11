@@ -187,7 +187,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     sharedFileMessages.map{
       fileMessage ⇒
         val j : io.circe.Json = Json.fromJsonObject(fileMessage)
-        val userFile : UserFile = Applicative[Id].map12(
+        val userFile : UserFile = Applicative[Id].map15(
           getFileTypeValue(j),
           getFileIdValue(j),
           getFileTitleValue(j),
@@ -199,7 +199,10 @@ class SlackConversationHistoryActor(channelId: ChannelId,
           getFileMimeTypeValue(j),
           getPermalinkValue(j),
           getFileCreatedValue(j),
-          getFileModeValue(j))(UserFile.apply)
+          getFileModeValue(j),
+          getFileThumb360Value(j),
+          getFileThumbPDFValue(j),
+          getFileThumbVideoValue(j))(UserFile.apply)
 
         Applicative[Id].map9(getMessageValue(j),
                              getSubtypeMessageValue(j),
