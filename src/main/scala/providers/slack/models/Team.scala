@@ -1,6 +1,7 @@
 package providers.slack.models
 
 case class Team(
+  id : String,
   name: String,
   domain: String,
   email_domain : String,

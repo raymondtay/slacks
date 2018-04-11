@@ -108,12 +108,13 @@ object JsonCodec {
       val teamH = team.hcursor
       val emojiH = emoji.hcursor
       for {
-        name         <- teamH.downField("team").downField("name").as[String]
-        domain       <- teamH.downField("team").downField("domain").as[String]
-        email_domain <- teamH.downField("team").downField("email_domain").as[String]
-        image_132    <- teamH.downField("team").downField("icon").downField("image_132").as[String]
-        emojis       <- emojiH.downField("emoji").as[Map[String,String]]
-      } yield Team(name, domain, email_domain, image_132, emojis = emojis.toList.map(p ⇒ Emoji(p._1, p._2)))
+        id           ← teamH.downField("team").downField("id").as[String]
+        name         ← teamH.downField("team").downField("name").as[String]
+        domain       ← teamH.downField("team").downField("domain").as[String]
+        email_domain ← teamH.downField("team").downField("email_domain").as[String]
+        image_132    ← teamH.downField("team").downField("icon").downField("image_132").as[String]
+        emojis       ← emojiH.downField("emoji").as[Map[String,String]]
+      } yield Team(id, name, domain, email_domain, image_132, emojis = emojis.toList.map(p ⇒ Emoji(p._1, p._2)))
   }
 }
 
