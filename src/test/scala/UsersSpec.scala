@@ -49,7 +49,11 @@ class UsersSpec(implicit ee: ExecutionEnv) extends Specification with ScalaCheck
     }
   }
 
-  def getUsersWhenDataIsPaginated = {
+  /**
+    * Note: This test is skipped for now as we have disabled pagination in
+    * retrieval of users from slack.
+    */
+  def getUsersWhenDataIsPaginated = skipped {
     import UsersInterpreter._
     import scala.concurrent._, duration._
 

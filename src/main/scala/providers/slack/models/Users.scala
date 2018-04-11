@@ -1,6 +1,6 @@
 package providers.slack.models
 
-case class Users(ok : Boolean, members: List[User], cache_ts : Long, response_metadata : Option[ResponseData], offset: String)
+case class Users(ok : Boolean, members: List[User], cache_ts : Long)
 case class User(
   id : String,
   team_id: String,

@@ -42,8 +42,7 @@ class SlackUsersActor(cfg : SlackUsersListConfig[String],
   import providers.slack.algebra.Users._
 
   implicit val http = Http(context.system)
-  private val defaultUri = s"${cfg.url}?token=${Monoid[String].combine(token.access_token.prefix, token.access_token.value)}&limit=100"
-  private def continuationUri = (cursor:String) ⇒ defaultUri + s"&limit=100&cursor=${cursor}"
+  private val defaultUri = s"${cfg.url}?token=${Monoid[String].combine(token.access_token.prefix, token.access_token.value)}"
   private var localStorage : UserList = UserList(Nil)
 
   type ReaderResponseEntity[A] = Reader[ResponseEntity, A]
@@ -60,13 +59,7 @@ class SlackUsersActor(cfg : SlackUsersListConfig[String],
 
   val parseAllUsers : Reader[io.circe.Json, providers.slack.models.Users] = Reader{ (json: io.circe.Json) ⇒
     import JsonCodec.{slackUserDec, slackUsersDec}
-    json.as[providers.slack.models.Users].getOrElse(providers.slack.models.Users(false, List.empty[User], 0L, None, ""))
-  }
-
-  // Using lens, we look for the next cursor if we can find it (which would
-  // return as a Some(x) else its a None)
-  val getNextPage : Kleisli[Option,io.circe.Json,String] = Kleisli{ (json: io.circe.Json) ⇒
-    root.response_metadata.next_cursor.string.getOption(json)
+    json.as[providers.slack.models.Users].getOrElse(providers.slack.models.Users(false, List.empty[User], 0L))
   }
 
   val decodeJsonNUpdateState : Eff[S2, Option[String]] = {
@@ -75,12 +68,10 @@ class SlackUsersActor(cfg : SlackUsersListConfig[String],
        _    <- tell[S2,String]("[Get-Users-Actor] Collected the json string from ctx.")
       json  <- values[S2, List[io.circe.Json]](parse(datum.utf8String).getOrElse(Json.Null) :: Nil)
        _    <- tell[S2,String]("[Get-Users-Actor] Collected the decoded json string.")
-      users <- singleton[S2, providers.slack.models.Users](parseAllUsers(json head))
-      cursor<- fromOption[S2, String](getNextPage(json head))
-       _    <- tell[S2, String]("[Get-Users-Actor] Processed json data for next-cursor.")
-       _    <- modify[S2, UserList]((m:UserList) ⇒ {localStorage = m.copy(users = m.users ++ users.members); localStorage})
+      users <- values[S2, List[User]](parseAllUsers(json head).members)
+       _    <- modify[S2, UserList]((m:UserList) ⇒ {localStorage = m.copy(users = m.users ++ users); localStorage})
        _    <- tell[S2, String]("[Get-Users-Actor] internal state is updated.")
-    } yield cursor.some
+    } yield None
 
   }
 
@@ -96,7 +87,7 @@ class SlackUsersActor(cfg : SlackUsersListConfig[String],
 
       implicit val scheduler = ExecutorServices.schedulerFromGlobalExecutionContext
       val possibleDatum : Throwable Either ByteString =
-        Either.catchNonFatal{Await.result(extractDataFromHttpStream.runReader(entity).runWriterNoLog.run, 2 second)}
+        Either.catchNonFatal{Await.result(extractDataFromHttpStream.runReader(entity).runWriterNoLog.run, 8 second)}
 
       val cursor : Option[String] =
       possibleDatum.toList.map(datum ⇒
@@ -106,13 +97,17 @@ class SlackUsersActor(cfg : SlackUsersListConfig[String],
           case _ ⇒ None
         }
 
+      // Retrieval of users cannot use the pagination approach as we have a
+      // business rule that prevents the creation of "dangling" data such as
+      // a slack user, therefore the cursor cannot exist but if the cursor does
+      // exist then we still continue w/o throwing a RTE but leave an error
+      // message, as below.
       cursor.isDefined && !cursor.get.isEmpty match {
         case false ⇒
-          log.warning("[Get-Users-Actor] No more further JSON data detected from Http stream.")
+          log.debug(s"[Get-Users-Actor][local-storage] total users in-memory: ${localStorage.users.size}")
+          log.info(s"[Get-Users-Actor] total users in-memory: ${localStorage.users.size}")
         case true ⇒
-          log.debug(s"[Get-Users-Actor][local-storage] bot-messages: ${localStorage.users.size}")
-          log.info(s"[Get-Users-Actor] following the cursor to retrieve more data...")
-          httpService.makeSingleRequest.run(continuationUri(cursor.get)).pipeTo(self)
+          log.error(s"[Get-Users-Actor][local-storage] There should be no cursor")
       }
 
     case GetUsers ⇒ 
