@@ -101,7 +101,7 @@ case class UserFile(
   permalink : String,
   created : Long,
   mode : String,
-  thumb_360 : Option[Int],
+  thumb_360 : Option[String],
   thumb_pdf : Option[String],
   thumb_video : Option[String]
 ) extends Serializable

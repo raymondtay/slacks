@@ -92,7 +92,7 @@ object JsonCodec {
           ("created", Json.fromLong(c.created)),
           ("mode" , Json.fromString(c.mode))).asObject
 
-      baseJsonObject = baseJsonObject.map(base ⇒ c.thumb_360.fold(base)(t ⇒ base.add("thumb_360", Json.fromInt(t))))
+      baseJsonObject = baseJsonObject.map(base ⇒ c.thumb_360.fold(base)(t ⇒ base.add("thumb_360", Json.fromString(t))))
       baseJsonObject = baseJsonObject.map(base ⇒ c.thumb_pdf.fold(base)(t ⇒ base.add("thumb_pdf", Json.fromString(t))))
       baseJsonObject = baseJsonObject.map(base ⇒ c.thumb_video.fold(base)(t ⇒ base.add("thumb_video", Json.fromString(t))))
       baseJsonObject.fold(Json.Null)(Json.fromJsonObject(_))

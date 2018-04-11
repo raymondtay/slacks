@@ -42,7 +42,7 @@ class SlackUsersActor(cfg : SlackUsersListConfig[String],
   import providers.slack.algebra.Users._
 
   implicit val http = Http(context.system)
-  private val defaultUri = s"${cfg.url}?token=${Monoid[String].combine(token.access_token.prefix, token.access_token.value)}&limit=20"
+  private val defaultUri = s"${cfg.url}?token=${Monoid[String].combine(token.access_token.prefix, token.access_token.value)}&limit=100"
   private def continuationUri = (cursor:String) ⇒ defaultUri + s"&limit=20&cursor=${cursor}"
   private var localStorage : UserList = UserList(Nil)
 
