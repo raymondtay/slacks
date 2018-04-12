@@ -71,7 +71,7 @@ class SlackUsersActor(cfg : SlackUsersListConfig[String],
       users <- values[S2, List[User]](parseAllUsers(json head).members)
        _    <- modify[S2, UserList]((m:UserList) ⇒ {localStorage = m.copy(users = m.users ++ users); localStorage})
        _    <- tell[S2, String]("[Get-Users-Actor] internal state is updated.")
-    } yield None
+    } yield "".some
 
   }
 
