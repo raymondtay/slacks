@@ -104,7 +104,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
 
         Applicative[Id].map9(
           getMessageValue(messageJ),
-          getUserIdValue(messageJ),
+          getBotIdValue(messageJ),
           getBotIdValue(messageJ),
           getTextValue(messageJ),
           extractBotAttachments(message),
