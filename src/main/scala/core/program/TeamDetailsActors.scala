@@ -62,14 +62,16 @@ class SlackTeamInfoActor(teamInfoCfg : SlackTeamInfoConfig[String],
 
   val decodeAsJson : Eff[S2, io.circe.Json] = {
     import io.circe.parser._
-    import JsonCodecLens.getTeamIdValue
+    import JsonCodecLens.{getTeamIdValue, isTeamFieldPresent}
     for {
       datum <- ask[S2, ByteString]
        _    <- tell[S2,String]("[Get-Team-Info-Actor] Collected the json string from ctx.")
       json  <- fromEither[S2, io.circe.ParsingFailure, io.circe.Json](parse(datum.utf8String))
        _    <- tell[S2,String]("[Get-Team-Info-Actor] Collected the decoded json string.")
-       _    <- put[S2, (TeamId, io.circe.Json)]((getTeamIdValue(json), json))
+       _    <- put[S2, (TeamId, io.circe.Json)]{if (isTeamFieldPresent(json)) (getTeamIdValue(json), json) else ("", io.circe.Json.Null)}
+       _    <- tell[S2,String]("[Get-Team-Info-Actor] local state stored.")
        _    <- modify[S2,(TeamId, io.circe.Json)]((s:(TeamId, io.circe.Json)) ⇒ {localStorage = s; localStorage})
+       _    <- tell[S2,String]("[Get-Team-Info-Actor] actor state stored.")
      } yield json
 
   }

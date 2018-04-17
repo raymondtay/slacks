@@ -151,6 +151,9 @@ object JsonCodecLens {
   def getPermalinkValue : Reader[io.circe.Json, String] = 
     Reader{ (json: io.circe.Json) ⇒ root.file.permalink.string.getOption(json).getOrElse("empty-permalink")}
 
+  def isTeamFieldPresent : Reader[io.circe.Json, Boolean] =
+    Reader{ (json: io.circe.Json) ⇒ root.team.obj.getOption(json).fold(false)(_ ⇒ true) }
+
   def getTeamIdValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.team.id.string.getOption(json).getOrElse("") }
 }
