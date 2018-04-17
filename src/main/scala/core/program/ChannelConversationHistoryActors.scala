@@ -104,7 +104,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
 
         Applicative[Id].map9(
           getMessageValue(messageJ),
-          getBotIdValue(messageJ),
+          getUsernameValue(messageJ),
           getBotIdValue(messageJ),
           getTextValue(messageJ),
           extractBotAttachments(message),
@@ -301,24 +301,21 @@ class SlackConversationHistoryActor(channelId: ChannelId,
                                                     blacklistedMessages : slacks.core.config.SlackBlacklistMessageForUserMentions) = Kleisli{ (json: io.circe.Json) ⇒
     import JsonCodecLens._
 
-    val blacklistedMessageTypes : Set[String] = blacklistedMessages.messagetypes ++ messageTypesToBeExcluded
     val wlMessages =
       root.messages.each.filter{ (j: io.circe.Json) ⇒
-        Applicative[Id].map2(isMessagePresentNMatched(j), ! blacklistedMessageTypes.contains(getSubtypeMessageValue(j)))(_ && _)
+        Applicative[Id].map2(isMessagePresentNMatched(j), ! messageTypesToBeExcluded.contains(getSubtypeMessageValue(j)))(_ && _)
       }.obj.getAll(json)
 
     val transformedJsons =
       wlMessages.map{
         message ⇒
           val messageJ : io.circe.Json = Json.fromJsonObject(message)
-          ( Messages.getUserMentionsWhenRepliesNOrReactionsPresent(messageJ),
-            Messages.getUserMentionsWhenRepliesOrReactionsPresent(messageJ) ) match {
-            case (usermentions, Nil) ⇒ Messages.inject("mentions")(Json.arr(usermentions.map(Json.fromString(_)):_*)).run(messageJ)
-            case (Nil, usermentions) ⇒ Messages.inject("mentions")(Json.arr(usermentions.map(Json.fromString(_)):_*)).run(messageJ)
-            case _ ⇒ Json.Null
-          } 
+          Messages.findUserMentions(messageJ) match {
+            case Nil          ⇒ messageJ
+            case usermentions ⇒ Messages.inject("mentions")(Json.arr(usermentions.map(Json.fromString(_)):_*)).run(messageJ)
+          }
       }
-    transformedJsons.filter(_ != Json.Null)
+    transformedJsons
   }
 
   //

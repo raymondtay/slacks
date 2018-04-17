@@ -57,8 +57,8 @@ case class Reply(ts: String, user: String) extends Serializable // "ts" - the ti
 
 case class BotAttachmentMessage(
   `type`: String,
-  user: String = "",
-  bot_id: String,
+  user: Option[String],
+  bot_id: Option[String],
   text: String,
   attachments: List[BotAttachment],
   ts: String,
@@ -68,7 +68,7 @@ case class BotAttachmentMessage(
 
 case class UserAttachmentMessage(
   `type`: String,
-  user: String,
+  user: Option[String],
   text: String,
   attachments: List[io.circe.Json],
   ts: String,
@@ -82,8 +82,8 @@ case class UserFileShareMessage(
   text : String,
   file : UserFile,
   comments : List[UserFileComment], 
-  user : String,
-  bot_id : String,
+  user : Option[String],
+  bot_id : Option[String],
   ts: String,
   mentions : List[String]
 ) extends Serializable
@@ -117,7 +117,7 @@ case class FileComment(
   subtype : String,
   text : String,
   user : String,
-  comment : String,
+  comment : Option[String],
   mentions : List[String],
   reactions : List[Reaction],
   ts : String

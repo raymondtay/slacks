@@ -205,6 +205,29 @@ object ConfigData {
     }
     """).map(s ⇒ ConfigFactory.parseString(s))
 
+  val badUserMentionsCfg = List(
+    """
+    slacks.usermentions.blacklist {
+    }""",
+    """
+    slacks.usermentions.blacklist {
+      messagetypes=3
+    }
+    """).map(s ⇒ ConfigFactory.parseString(s))
+
+  val goodUserMentionsCfg = List(
+    """
+    slacks.usermentions.blacklist {
+      messagetypes=[]
+    }""",
+    """
+    slacks.usermentions.blacklist {
+      messagetypes=["a","b"]
+    }
+    """).map(s ⇒ ConfigFactory.parseString(s))
+
+  val genBadUserMentionsCfg = for { cfg <- oneOf(badUserMentionsCfg) } yield cfg
+  val genGoodUserMentionsCfg = for { cfg <- oneOf(goodUserMentionsCfg) } yield cfg
   val genGoodConfig1 = for { cfg <- oneOf(goodCfgs1) } yield cfg
   val genGoodConfig2 = for { cfg <- oneOf(goodCfgs2) } yield cfg
   val genGoodCredConfig1 = for { cfg <- oneOf(goodCredCfg1) } yield cfg
@@ -232,6 +255,8 @@ object ConfigData {
   implicit val arbBadConfig = Arbitrary(genBadConfig)
   implicit val arbMissingData1Config = Arbitrary(genMissingData1Config)
   implicit val arbMissingData2Config = Arbitrary(genMissingData2Config)
+  implicit val invalidUserMentionsKey = Arbitrary(genBadUserMentionsCfg)
+  implicit val validUserMentionsKey = Arbitrary(genGoodUserMentionsCfg)
 
 }
 
@@ -405,6 +430,29 @@ class ConfigSpec extends mutable.Specification with ScalaCheck {
       ConfigValidator.validateAccessConfig(cfg.getConfig("slacks.oauth.access")) match {
         case s @ Valid(_)   ⇒ s.toEither must beRight
         case e @ Invalid(_) ⇒ e.toEither must beLeft
+      }
+    }.set(minTestsOk = minimumNumberOfTests, workers = 1)
+  }
+
+  {
+    import ConfigData.validUserMentionsKey
+    "Valid key 'messagetypes' will be registered and caught." >> prop { (cfg: Config) ⇒
+      (ConfigValidator.validateUserMentionBlacklist(cfg.getConfig("slacks.usermentions.blacklist")) : @unchecked) match {
+        case Valid(expected) ⇒ expected.size must beBetween(0,2)
+      }
+    }.set(minTestsOk = minimumNumberOfTests, workers = 1)
+  }
+
+  {
+    import ConfigData.invalidUserMentionsKey
+    "Invalid or missing key 'messagetypes' will be registered and caught." >> prop { (cfg: Config) ⇒
+      ConfigValidator.validateUserMentionBlacklist(cfg.getConfig("slacks.usermentions.blacklist")) match {
+        case s @ Valid(_)   ⇒ s.toEither must beRight
+        case e @ Invalid(_) ⇒ 
+          e.toEither must beLeft{
+            (x: NonEmptyList[ConfigValidation]) ⇒ 
+              x.head.errorMessage must be_==(slacks.core.config.MissingUserMentionBlacklistKey.errorMessage)
+          }
       }
     }.set(minTestsOk = minimumNumberOfTests, workers = 1)
   }

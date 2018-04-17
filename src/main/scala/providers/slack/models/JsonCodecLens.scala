@@ -54,14 +54,14 @@ object JsonCodecLens {
       root.bot_id.string.exist(_ != "") != None
     }
 
-  def getUserIdValue : Reader[io.circe.Json, String] =
-    Reader{ (json: io.circe.Json) ⇒ root.user.string.getOption(json).getOrElse("empty-user-id")}
+  def getUserIdValue : Reader[io.circe.Json, Option[String]] =
+    Reader{ (json: io.circe.Json) ⇒ root.user.string.getOption(json)}
 
-  def getUsernameValue : Reader[io.circe.Json, String] =
-    Reader{ (json: io.circe.Json) ⇒ root.username.string.getOption(json).getOrElse("empty-username")}
+  def getUsernameValue : Reader[io.circe.Json, Option[String]] =
+    Reader{ (json: io.circe.Json) ⇒ root.username.string.getOption(json)}
 
-  def getBotIdValue : Reader[io.circe.Json, String] =
-    Reader{ (json: io.circe.Json) ⇒ root.bot_id.string.getOption(json).getOrElse("empty-bot-id")}
+  def getBotIdValue : Reader[io.circe.Json, Option[String]] =
+    Reader{ (json: io.circe.Json) ⇒ root.bot_id.string.getOption(json)}
 
   def getFileIdValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.file.id.string.getOption(json).getOrElse("empty-file-id")}
@@ -121,8 +121,8 @@ object JsonCodecLens {
   def getFileInitialCommentValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.file.initial_comment.comment.string.getOption(json).getOrElse("empty-initial_comment") }
 
-  def getFileCommentValue : Reader[io.circe.Json, String] =
-    Reader{ (json: io.circe.Json) ⇒ root.comment.comment.string.getOption(json).getOrElse("empty-file_comment") }
+  def getFileCommentValue : Reader[io.circe.Json, Option[String]] =
+    Reader{ (json: io.circe.Json) ⇒ root.comment.comment.string.getOption(json)}
 
   def getFileCommentUserValue : Reader[io.circe.Json, String] =
     Reader{ (json: io.circe.Json) ⇒ root.comment.user.string.getOption(json).getOrElse("empty-file_user_comment") }
