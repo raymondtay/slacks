@@ -102,8 +102,9 @@ class SlackConversationHistoryActor(channelId: ChannelId,
       message ⇒
         val messageJ : io.circe.Json = Json.fromJsonObject(message)
 
-        Applicative[Id].map9(
+        Applicative[Id].map10(
           getMessageValue(messageJ),
+          getSubtypeMessageValue(messageJ),
           getUsernameValue(messageJ),
           getBotIdValue(messageJ),
           getTextValue(messageJ),
@@ -111,7 +112,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
           getTimestampValue(messageJ),
           extractBotReactions(message),
           extractBotReplies(message),
-          Messages.getUserMentionsWhenRepliesOrReactionsPresent(messageJ))(BotAttachmentMessage.apply)
+          Messages.findUserMentions(messageJ))(BotAttachmentMessage.apply)
     }
   }
 
@@ -139,7 +140,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
           getTimestampValue(messageJ),
           extractUserReactions(message),
           extractUserReplies(message),
-          Messages.getUserMentionsWhenRepliesOrReactionsPresent(messageJ))(UserAttachmentMessage.apply)
+          Messages.findUserMentions(messageJ))(UserAttachmentMessage.apply)
     }
   }
 
@@ -204,17 +205,18 @@ class SlackConversationHistoryActor(channelId: ChannelId,
           getFileThumbPDFValue(j),
           getFileThumbVideoValue(j))(UserFile.apply)
 
-        Applicative[Id].map9(getMessageValue(j),
-                             getSubtypeMessageValue(j),
-                             getTextValue(j),
-                             userFile,
-                             Messages.getFileInitialCommentInFileShareMessage(j).
-                               fold(getFileComments(getFileIdValue(j))(json))
-                                   (fileComment ⇒ getFileComments(getFileIdValue(j))(json) :+ fileComment),
-                             getUserIdValue(j),
-                             getBotIdValue(j),
-                             getTimestampValue(j),
-                             Messages.getUserMentionsWhenRepliesOrReactionsPresent(j))(UserFileShareMessage.apply)
+        Applicative[Id].map10(getMessageValue(j),
+                              getSubtypeMessageValue(j),
+                              getTextValue(j),
+                              userFile,
+                              Messages.getFileInitialCommentInFileShareMessage(j).
+                                fold(getFileComments(getFileIdValue(j))(json))
+                                    (fileComment ⇒ getFileComments(getFileIdValue(j))(json) :+ fileComment),
+                              isFileInitialCommentPresent(j).fold("")(_ ⇒ getFileInitialCommentValue(j).fold("")(x ⇒ x)),
+                              getUserIdValue(j),
+                              getBotIdValue(j),
+                              getTimestampValue(j),
+                              Messages.findUserMentions(j))(UserFileShareMessage.apply)
     }
   }
 

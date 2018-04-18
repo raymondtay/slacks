@@ -118,8 +118,11 @@ object JsonCodecLens {
         } yield UserFileComment(id, ts , user)
     }}
 
-  def getFileInitialCommentValue : Reader[io.circe.Json, String] =
-    Reader{ (json: io.circe.Json) ⇒ root.file.initial_comment.comment.string.getOption(json).getOrElse("empty-initial_comment") }
+  def isFileInitialCommentPresent : Reader[io.circe.Json, Option[io.circe.JsonObject]] =
+    Reader { (json: io.circe.Json) ⇒ root.file.initial_comment.obj.getOption(json) }
+
+  def getFileInitialCommentValue : Reader[io.circe.Json, Option[String]] =
+    Reader{ (json: io.circe.Json) ⇒ root.file.initial_comment.comment.string.getOption(json) }
 
   def getFileCommentValue : Reader[io.circe.Json, Option[String]] =
     Reader{ (json: io.circe.Json) ⇒ root.comment.comment.string.getOption(json)}

@@ -76,13 +76,19 @@ object Messages {
   }
 
   /**
-    * Get user mentions iff either `replies` or `reactions` is present
-    * @param json json object
-    * @return empty list or a container with user-ids
+    * Checks whether the message is in the white-list by cross-checking the
+    * blacklist (see [application.conf])
+    * @param json json object to be examined
+    * @return a boolean value
     */
-  def getUserMentionsWhenRepliesOrReactionsPresent : Reader[io.circe.Json, List[String]] = Reader{ (json: io.circe.Json) ⇒
-    if (isRepliesFieldPresent(json) || isReactionsFieldPresent(json))
-      Messages.findUserMentions(json) else List.empty[String]
+  def messageSubtypeIsInWhiteList : Reader[io.circe.Json, Boolean] = Reader { (json: io.circe.Json) ⇒
+    Config.usermentionBlacklistConfig match {
+      case Right(cfg) ⇒  
+        if (cfg.messagetypes.contains(getSubtypeMessageValue(json))) // in the blacklist
+          false
+        else true
+      case Left(error) ⇒ false
+    }
   }
 
   /**
@@ -97,22 +103,6 @@ object Messages {
         extractFileShareUserMentions(json),
         extractFileCommentUserMentions(json)
       )( _ |+| _ |+| _ )
-  }
-
-  /**
-    * Checks whether the message is in the white-list by cross-checking the
-    * blacklist (see [application.conf])
-    * @param json json object to be examined
-    * @return a boolean value
-    */
-  def messageSubtypeIsInWhiteList : Reader[io.circe.Json, Boolean] = Reader { (json: io.circe.Json) ⇒
-    Config.usermentionBlacklistConfig match {
-      case Right(cfg) ⇒  
-        if (cfg.messagetypes.contains(getSubtypeMessageValue(json))) // in the blacklist
-          false
-        else true
-      case Left(error) ⇒ false
-    }
   }
 
   /**
@@ -136,7 +126,8 @@ object Messages {
   def extractFileShareUserMentions = Reader {
     (j: io.circe.Json) ⇒
       if (!messageSubtypeIsInWhiteList(j) && !isSubtypePresentNMatched("file_share")(j)) List.empty[String]
-      else getUserIds(getFileInitialCommentValue(j))
+      else
+        isFileInitialCommentPresent(j).fold(List.empty[String])(_ ⇒ getFileInitialCommentValue(j).fold(List.empty[String])(fileInitialComment ⇒ getUserIds(fileInitialComment)))
   }
 
   /**
