@@ -212,7 +212,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
                               Messages.getFileInitialCommentInFileShareMessage(j).
                                 fold(getFileComments(getFileIdValue(j))(json))
                                     (fileComment ⇒ getFileComments(getFileIdValue(j))(json) :+ fileComment),
-                              isFileInitialCommentPresent(j).fold("")(_ ⇒ getFileInitialCommentValue(j).fold("")(x ⇒ x)),
+                              if (!Messages.extractFileShareUserMentions(j).isEmpty) getFileInitialCommentValue(j).fold("")(x ⇒ x) else "",
                               getUserIdValue(j),
                               getBotIdValue(j),
                               getTimestampValue(j),
