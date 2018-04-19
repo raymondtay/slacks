@@ -45,6 +45,8 @@ object JsonCodecLens {
   def isAttachmentsFieldPresent : Reader[io.circe.Json, Boolean] =
     Reader{(json: io.circe.Json) ⇒ root.attachments.arr.getOption(json) != None}
 
+  def getAttachments : Kleisli[Option, io.circe.Json, Vector[io.circe.Json]] = Kleisli{ (json : io.circe.Json) ⇒ root.attachments.arr.getOption(json) }
+
   def isSubtypeFieldPresent : Reader[io.circe.Json, Boolean] =
     Reader{(json: io.circe.Json) ⇒ root.subtype.string.getOption(json) != None }
 

@@ -61,7 +61,7 @@ case class BotAttachmentMessage(
   username: Option[String],
   bot_id: Option[String],
   text: String,
-  attachments: List[BotAttachment],
+  attachments: Option[Vector[io.circe.Json]],
   ts: String,
   reactions: List[Reaction],
   replies: List[Reply],

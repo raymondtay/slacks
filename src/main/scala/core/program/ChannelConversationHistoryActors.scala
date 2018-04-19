@@ -108,7 +108,7 @@ class SlackConversationHistoryActor(channelId: ChannelId,
           getUsernameValue(messageJ),
           getBotIdValue(messageJ),
           getTextValue(messageJ),
-          extractBotAttachments(message),
+          getAttachments(messageJ),
           getTimestampValue(messageJ),
           extractBotReactions(message),
           extractBotReplies(message),
@@ -234,16 +234,6 @@ class SlackConversationHistoryActor(channelId: ChannelId,
     }
   }
   val extractUserReplies = extractBotReplies
-
-  // Extract the bot's "attachments" from the json object
-  val extractBotAttachments : Kleisli[List, io.circe.JsonObject, BotAttachment] = Kleisli{ (o : io.circe.JsonObject) ⇒
-    import JsonCodec.slackBotAttachmentDec
-    val json : io.circe.Json = Json.fromJsonObject(o)
-    root.attachments.arr.getOption(json) match {
-      case Some(xs : Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[BotAttachment].getOrElse(BotAttachment("","","",0L,"",Nil))).toList
-      case None ⇒ List.empty[BotAttachment]
-    }
-  }
 
   // Extract the user's "attachments" from the json object
   val extractUserAttachments : Kleisli[List, io.circe.JsonObject, io.circe.Json] = Kleisli{ (o : io.circe.JsonObject) ⇒
