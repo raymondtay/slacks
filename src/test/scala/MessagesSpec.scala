@@ -151,7 +151,21 @@ object Data {
   val generateWhitelistedSlackMessagesWithUserMentions : Gen[Json] = {
     import _root_.io.circe.syntax._
     for {
-      subtype ← oneOf("bot_message", "file_share", "file_comment")
+      subtype ← oneOf("bot_message" :: Nil)
+      data    ← alphaStr.suchThat(!_.isEmpty)
+      user1   ← slacks.core.parser.Data.generateLegalSlackUserIds
+      user2   ← slacks.core.parser.Data.generateLegalSlackUserIdsWithNames
+    } yield Json.obj(
+      ("type",    Json.fromString("message")), 
+      ("subtype", Json.fromString(subtype)),
+      ("text", Json.fromString(user1 + data + user2))
+    ).asJson
+  }
+
+  val generateBlacklistedSlackMessagesWithUserMentions : Gen[Json] = {
+    import _root_.io.circe.syntax._
+    for {
+      subtype ← oneOf("file_share", "file_comment")
       data    ← alphaStr.suchThat(!_.isEmpty)
       user1   ← slacks.core.parser.Data.generateLegalSlackUserIds
       user2   ← slacks.core.parser.Data.generateLegalSlackUserIdsWithNames
@@ -165,6 +179,7 @@ object Data {
   implicit val arbBlacklistedMessages  : Arbitrary[Json] = Arbitrary(generateBlacklistedSlackMessages)
   implicit val arbWhitelistedMessagesWithNoUserMentions  : Arbitrary[Json] = Arbitrary(generateWhitelistedSlackMessagesWithNoUserMentions)
   implicit val arbWhitelistedMessagesWithUserMentions  : Arbitrary[Json] = Arbitrary(generateWhitelistedSlackMessagesWithUserMentions)
+  implicit val arbBlacklistedMessagesWithUserMentions  : Arbitrary[Json] = Arbitrary(generateBlacklistedSlackMessagesWithUserMentions)
   implicit val arbFileCommentMessage : Arbitrary[Json] = Arbitrary(generateFileCommentSlackMessage)
 }
 
@@ -188,10 +203,19 @@ class MessagesSpec extends mutable.Specification with ScalaCheck {
 
   {
     import Data.arbWhitelistedMessagesWithUserMentions
-    "When user mentions are detected in the 'text' field, they will be captured" >> prop { (message: Json) ⇒
+    "When user mentions are detected in the 'text' field but they are whitelisted message subtypes, they will be captured" >> prop { (message: Json) ⇒
       val result = Messages.extractUserMentions(message)
       result must not be empty
       result.size must be_==(2)
+    }.set(minTestsOk = minimumNumberOfTests, workers = 1)
+  }
+
+  {
+    import Data.arbBlacklistedMessagesWithUserMentions
+    "When user mentions are detected in the 'text' field but they are blacklisted message subtypes, they will NOT be captured" >> prop { (message: Json) ⇒
+      val result = Messages.extractUserMentions(message)
+      result must beEmpty
+      result.size must be_==(0)
     }.set(minTestsOk = minimumNumberOfTests, workers = 1)
   }
 
