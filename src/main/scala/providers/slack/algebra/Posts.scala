@@ -37,7 +37,7 @@ object Messages {
     if (isReactionsFieldPresentInComment(json)) {
       fileCommentMessage = fileCommentMessage.copy(
         reactions = 
-        root.reactions.arr.getOption(json) match {
+        root.comment.reactions.arr.getOption(json) match {
           case Some(xs:Vector[io.circe.Json]) ⇒ xs.map(x ⇒ x.as[Reaction].getOrElse(Reaction("",Nil))).toList
           case None ⇒ List.empty[Reaction]
         })
