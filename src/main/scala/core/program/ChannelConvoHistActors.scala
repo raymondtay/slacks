@@ -38,11 +38,11 @@ case class SievedMessages(
 
 case object GetConversationHistory
 
-class SlackConversationHistoryActor(channelId: ChannelId,
-                                    cfg : SlackChannelReadConfig[String],
-                                    blConfig : slacks.core.config.SlackBlacklistMessageForUserMentions,
-                                    token : SlackAccessToken[String],
-                                    httpService : HttpService)(implicit aS: ActorSystem, aM: ActorMaterializer) extends Actor with ActorLogging {
+class SlackConvoHistActor(channelId: ChannelId,
+                          cfg : SlackChannelReadConfig[String],
+                          blConfig : slacks.core.config.SlackBlacklistMessageForUserMentions,
+                          token : SlackAccessToken[String],
+                          httpService : HttpService)(implicit aS: ActorSystem, aM: ActorMaterializer) extends Actor with ActorLogging {
   import cats._, data._, implicits._
   import io.circe._, io.circe.parser._
   import io.circe.optics.JsonPath._

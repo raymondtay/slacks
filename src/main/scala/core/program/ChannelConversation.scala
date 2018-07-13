@@ -78,7 +78,7 @@ object ChannelConversationInterpreter {
 
     val supervisor = actorSystem.actorOf(Props[SupervisorRestartN], s"supervisorRestartN_${java.util.UUID.randomUUID.toString}")
     implicit val createActorTimeout = Timeout(3 seconds)
-    val actor = Await.result((supervisor ? Props(new SlackConversationHistoryActor(channelId, cfg, blacklistCfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
+    val actor = Await.result((supervisor ? Props(new SlackConvoHistActor(channelId, cfg, blacklistCfg, token, httpService))).mapTo[ActorRef], createActorTimeout.duration)
     val timeout = Timeout(cfg.timeout seconds)
     futureDelay[Stack, SievedMessages](
       Await.result((actor ? GetConversationHistory).mapTo[SievedMessages], timeout.duration)
