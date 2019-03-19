@@ -46,3 +46,5 @@ libraryDependencies ++= (scalaBinaryVersion.value match {
 // All tests are run sequentially
 parallelExecution in Test := false
 
+scapegoatVersion in ThisBuild := "1.1.0"
+
