@@ -1,6 +1,8 @@
 # slacks
 [![CircleCI branch](https://img.shields.io/circleci/project/github/RedSparr0w/node-csgo-parser/master.svg)](https://circleci.com/gh/raymondtay/slacks/tree/master)
 
+![Cats Friendly Badge](https://typelevel.org/cats/img/cats-badge-tiny.png)
+
 A mini library for Slack
 
 # Supported Features
