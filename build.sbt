@@ -48,3 +48,6 @@ parallelExecution in Test := false
 
 scapegoatVersion in ThisBuild := "1.1.0"
 
+githubOwner := "raymondtay"
+githubRepository := "slacks"
+
