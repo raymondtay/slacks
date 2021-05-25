@@ -1,12 +1,26 @@
 import Dependencies._
 
+enablePlugins(GitVersioning)
+
 val commonSettings = Seq(
   name := "slacks",
   organization := "org.slacks",
   description := "Simple library for Slack APIs",
-  version := "0.1-SNAPSHOT",
   scalaVersion := "2.11.11",
-  scalacOptions ++= Seq("-deprecation", "-feature", "-Yrangepos", "-Ypartial-unification")
+  scalacOptions ++= Seq("-deprecation", "-feature", "-Yrangepos", "-Ypartial-unification"),
+
+  // Publish settings
+  githubOwner := "raymondtay",
+  githubRepository := "slacks",
+  git.useGitDescribe := true,
+  git.formattedShaVersion := {
+    val base = git.baseVersion.?.value
+    val suffix =
+      git.makeUncommittedSignifierSuffix(git.gitUncommittedChanges.value, git.uncommittedSignifier.value)
+      git.gitHeadCommit.value.map { sha =>
+        git.defaultFormatShaVersion(base, sha.take(8), suffix)
+      }
+  }
 )
 
 val codeCoverageSettings = Seq(
@@ -27,9 +41,6 @@ enablePlugins(JavaServerAppPackaging)
 
 resolvers += Resolver.sonatypeRepo("releases")
 
-// Supporting code in markdowns
-enablePlugins(TutPlugin)
-
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.4")
 
 // if your project uses multiple Scala versions, use this for cross building
@@ -47,7 +58,4 @@ libraryDependencies ++= (scalaBinaryVersion.value match {
 parallelExecution in Test := false
 
 scapegoatVersion in ThisBuild := "1.1.0"
-
-githubOwner := "raymondtay"
-githubRepository := "slacks"
 
